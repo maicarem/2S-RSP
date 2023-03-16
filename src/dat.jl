@@ -52,7 +52,7 @@ end
 function _transformation_cost()
     
     star_offset_list = _find_offset_star()
-    backup_offset_dict = _find_offset_backup()
+    backup_offset_list = _find_offset_backup()
     offset = sum([star_offset_list[i] for i in 1:n])
     
     opening_cost = zeros(Float64, n)
@@ -65,16 +65,16 @@ function _transformation_cost()
         for j in 1:n
             i<j || continue
             if i in V_tilt && j in V_certain
-                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_dict[j]
+                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_list[j]
             elseif i in V_certain && j in V_tilt
-                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_dict[i]
+                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_list[i]
             elseif i in V_tilt && j in V_tilt
-                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_dict[i] + 1/2 * backup_offset_dict[j]
+                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_list[i] + 1/2 * backup_offset_list[j]
             else
                 ring_cost[i,j] = rc[i,j]
             end
             
-            backup_cost[i,j] = rc[i,j] - 1/2 * backup_offset_dict[i] - 1/2 * backup_offset_dict[j]
+            backup_cost[i,j] = rc[i,j] - 1/2 * backup_offset_list[i] - 1/2 * backup_offset_list[j]
             
             if j in V_certain
                 j!=i || continue
@@ -93,4 +93,4 @@ function _transformation_cost()
 end
 opening_cost, ring_cost, star_cost = oc, rc, sc
 offset, oc, rc, sc, backup = _transformation_cost()
-@show opening_cost
+# @show opening_cost
