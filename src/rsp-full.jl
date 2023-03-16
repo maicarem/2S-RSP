@@ -19,7 +19,7 @@ for i in 2:ceil(Int,length(V)/2)
         @constraint(main, length(S) - 1/length(V)*sum(y[i,i] for i in S)>= sum(x[i,j] for i in S for j in S if i<j))
     end
 end
-
+# comment
 @constraint(main, degree_constr[i in V] ,sum(x[i,j] for j in V if i<j) + sum(x[j,i] for j in V if i>j)==  2*y[i,i])
 @constraint(main, [(i,j) in E], x[i,j] == x[j,i])
 @constraint(main, [(i,j) in E], x_prime[i,j] == x_prime[j,i])
