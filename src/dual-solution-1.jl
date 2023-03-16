@@ -4,7 +4,7 @@ Input: y_hat, x_hat: structure of the ring
 =#
 
 
-function _dual_backup_edges(y_hat, x_hat)
+function _dual_backup_edges(y_hat, x_hat, backup)
     alpha = zeros(Float64, n,n,n,n)
     beta = zeros(Float64, n,n,n)
     
@@ -26,12 +26,14 @@ function _dual_backup_edges(y_hat, x_hat)
         end
     end
 
+    # Find dual beta[i,j,k], i<k
     for i in V_tilt
         y_hat[i,i] == 1 && (beta_prime[i][1], beta_prime[i][2]) ∉ keys(saved0) || continue
-        beta[beta_prime[i][1],i, beta_prime[i][2]] = rc[beta_prime[i][1], beta_prime[i][2]]
+        beta[beta_prime[i][1],i, beta_prime[i][2]] = backup[beta_prime[i][1], beta_prime[i][2]]
         saved0[(beta_prime[i][1], beta_prime[i][2])] = 1
     end
     
+    # Find alpha[i,j,k,t], k<t
     for i in V_tilt
         y_hat[i,i] == 1 || continue
         for j in beta_prime[i]
@@ -41,7 +43,7 @@ function _dual_backup_edges(y_hat, x_hat)
             m0 = min(_m0, _n0)
             n0 = max(_m0, _n0)
             (m0,n0) ∉ keys(saved0) || continue
-            alpha[i,j,m0,n0] = rc[m0,n0]
+            alpha[i,j,m0,n0] = backup[m0,n0]
             saved0[(m0,n0)] = 1
         end
     end
@@ -84,7 +86,7 @@ end
 
 function dual_solution(y_hat, x_hat) 
     # Output: beta, alpha, φ, γ
-    return _dual_backup_edges(y_hat, x_hat), _dual_star_structure(y_hat)
+    return _dual_backup_edges(y_hat, x_hat, backup), _dual_star_structure(y_hat)
 end
 
 y_hat = [1.0  0.0  0.0  0.0  0.0  0.0;
