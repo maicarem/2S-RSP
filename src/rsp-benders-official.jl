@@ -6,7 +6,6 @@ include("transformation-cost.jl")
 
 function master_problem()
     # offset, opening_cost, ring_cost, star_cost, backup_cost = _transformation_cost()
-    @show offset, opening_cost, ring_cost, star_cost, backup_cost
     master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
     
     # Decision variables
@@ -33,18 +32,18 @@ function master_problem()
     @constraint(master, terminal_constr[i in V], sum(3*y[i,j] for j in V_certain if i!=j) + sum(y[i,j] for j in V_tilt if j!=i) == 3*(1-y[i,i]))
     @constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
     @constraint(master, [(i,j) in T_tilt], sigma >= y[i,i] + y[j,j])
-    @constraint(master, [(i,j,k,t) in J_tilt], x[k,i]+ x[i,j] + x[j,t] <= 2+x_prime[i,k])
+    @constraint(master, [(i,j,k,t) in J_tilt], x[k,i]+ x[i,j] + x[j,t] <= 2+x_prime[k,t])
     @constraint(master, [(i,j,k) in K_tilt], x[i,j] + x[j,k] <= 1+x_prime[i,k])
 
     @constraint(master, [(i,j) in A], y[i,j] <= y[j,j])
     @constraint(master, y[1,1] == 1)
     
     # offset, opening_cost, ring_cost, star_cost, backup_cost 
-    @objective(master, Min, offset + sum(opening_cost[i]* y[i,i] for i in V) + sum(ring_cost[i,j]*x[i,j] + 
-                                backup_cost[i,j]*x_prime[i,j] for (i,j) in E) + sum(star_cost[i,j]*y[i,j] for (i,j) in A))
+    @objective(master, Min, offset + sum(oc[i]* y[i,i] for i in V) + sum(rc[i,j]*x[i,j] + 
+                                backup[i,j]*x_prime[i,j] for (i,j) in E) + sum(sc[i,j]*y[i,j] for (i,j) in A))
     
+    optimize!(master)
     return master
 end
 
 master = master_problem()
-master

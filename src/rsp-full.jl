@@ -11,7 +11,7 @@ main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 @variable(main, sigma)
 
 # # Objective function
-@objective(main, Min, sum(rc[i,j]*(x[i,j]+x_prime[i,j]) for (i,j) in E)+ sum(oc[i]*y[i,i] for i in V)+ sum(sc[i,j]*y[i,j] for (i,j) in A))
+@objective(main, Min, sum(ring_cost[i,j]*(x[i,j]+x_prime[i,j]) for (i,j) in E)+ sum(opening_cost[i]*y[i,i] for i in V)+ sum(star_cost[i,j]*y[i,j] for (i,j) in A))
 
 for i in 2:ceil(Int,length(V)/2)
     print(i)
@@ -27,7 +27,7 @@ end
 @constraint(main, terminal_constr[i in V], sum(3*y[i,j] for j in V_certain if i!=j) + sum(y[i,j] for j in V_tilt if j!=i) == 3*(1-y[i,i]))
 @constraint(main, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
 @constraint(main, [(i,j) in T_tilt], sigma >= y[i,i] + y[j,j])
-@constraint(main, [(i,j,k,t) in J_tilt], x[k,i]+ x[i,j] + x[j,t] <= 2+x_prime[i,k])
+@constraint(main, [(i,j,k,t) in J_tilt], x[k,i]+ x[i,j] + x[j,t] <= 2+x_prime[k,t])
 @constraint(main, [(i,j,k) in K_tilt], x[i,j] + x[j,k] <= 1+x_prime[i,k])
 
 @constraint(main, [(i,j) in A], y[i,j] <= y[j,j])
