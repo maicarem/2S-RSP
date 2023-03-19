@@ -3,8 +3,10 @@ Find dual solution
 Input: y_hat, x_hat: structure of the ring
 =#
 include("misc.jl")
+include("dat.jl")
 
 function _dual_backup_edges(y_hat, x_hat, backup)
+    
     alpha = zeros(Float64, n,n,n,n)
     beta = zeros(Float64, n,n,n)
     
@@ -43,7 +45,11 @@ function _dual_backup_edges(y_hat, x_hat, backup)
             m0 = min(_m0, _n0)
             n0 = max(_m0, _n0)
             (m0,n0) ∉ keys(saved0) || continue
-            alpha[i,j,m0,n0] = backup[m0,n0]
+            if x_hat[m0,i] == 1 && x_hat[j,n0] == 1
+                alpha[i,j,m0,n0] = backup[m0,n0]
+            elseif x_hat[m0,j] == 1 && x_hat[i,n0] == 1
+                alpha[j,i,m0,n0] = backup[m0,n0]
+            end
             saved0[(m0,n0)] = 1
         end
     end
@@ -104,8 +110,26 @@ end
 # 0.0  0.0  0.0  1.0  0.0  1.0;
 # 0.0  0.0  1.0  0.0  1.0  0.0]
 
-# include("dat.jl")
-# # @show _list_hub(y_hat)
-# # @show _dual_star_structure(y_hat)[1]
-# # @show minimum(sc[2, V_certain])
+# Test 2
+
+# x_hat = [0.0   1.0  -0.0  -0.0   0.0   1.0;
+# 1.0   0.0  -0.0   1.0  -0.0   0.0;
+# 0.0  -0.0   0.0  -0.0  -0.0  -0.0;
+# -0.0   1.0   0.0   0.0   1.0   0.0;
+# 0.0  -0.0   0.0   1.0   0.0   1.0;
+# 1.0   0.0  -0.0   0.0   1.0   0.0]
+
+# y_hat = [
+#     1.0  0.0  0.0  0.0  0.0  0.0;
+#  0.0  1.0  0.0  0.0  0.0  0.0;
+#  0.0  0.0  0.0  0.0  0.0  0.0;
+#  0.0  0.0  0.0  1.0  0.0  0.0;
+#  0.0  0.0  0.0  0.0  1.0  0.0;
+#  0.0  0.0  0.0  0.0  0.0  1.0
+# ]
+
+# @show _list_hub(y_hat)
+# @show _dual_star_structure(y_hat)[1]
+# @show minimum(sc[2, V_certain])
 # @show dual_solution(y_hat, x_hat)
+# @show _dual_backup_edges(y_hat, x_hat, backup)

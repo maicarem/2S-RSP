@@ -9,15 +9,22 @@ end
 rc = sc*2
 for i = 1:n
     rc[i,4] = 0.1
-    rc[4,i] =0.1
+    rc[4,i] = 0.1
     rc[i,i] = 1e18
 end
 oc = zeros(n)
 ABSOLUTE_OPTIMALITY_GAP = 1e-6
 
+# n=3
+# sc = [1e18 0.1 1;
+#     0.1 1e18 0.1;
+#     1 0.1 1e18
+# ]
+# rc= sc 
+# oc = zeros(n)
 # Declare sets
 V = 1:n
-V_tilt = [1,2,3,4,5,6]
+V_tilt = [1,2,3,4]
 V_certain = [i for i in V if i ∉ V_tilt]
 A = [(i,j) for i in V for j in V if i !=j]
 A_prime = [(i,j) for i in V for j in V]
@@ -30,13 +37,18 @@ T_tilt = [(i,j) for i in V_tilt for j in V_tilt if i<j]
 function _find_offset_star()
     offset = zeros(Float64, n)
     for i in 1:n
-        if length(V_tilt) <= 1
-            offset[i] = minimum(3 * sc[i,[j for j in 1:n if i!=j && j in V_certain]])
-        elseif length(V_certain) <= 1
-            offset[i] = minimum(sc[i,[j for j in 1:n if i!=j && j in V_tilt]])
+        _V_tilt = [j for j in V_tilt if j!=i]
+        _V_certain = [j for j in V_certain if j!=i]
+        lb1, lb2 = 1e18, 1e18
+        if length(_V_certain) == 0
+            lb2 = 3 * minimum([sc[i,k] for k in _V_tilt])
+        elseif length(_V_tilt) == 0
+            lb1 = minimum([sc[i,k] for k in _V_certain])
         else
-            offset[i] = min(minimum(3 * sc[i,[j for j in 1:n if j!=i && j in V_certain]]), minimum(sc[i,[j for j in 1:n if j!=i && j in V_tilt]]))
+            lb1 = minimum([sc[i,k] for k in _V_certain])
+            lb2 = 3 * minimum([sc[i,k] for k in _V_tilt])
         end
+        offset[i] = min(lb1, lb2)
     end
     return offset
 end
@@ -61,36 +73,39 @@ function _transformation_cost()
     backup_cost = ones(Float64, n,n) * 1e18
 
     for i in 1:n
+        
         opening_cost[i] = oc[i] - star_offset_list[i]
+        
         for j in 1:n
+            
             i<j || continue
             if i in V_tilt && j in V_certain
                 ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_list[j]
             elseif i in V_certain && j in V_tilt
                 ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_list[i]
             elseif i in V_tilt && j in V_tilt
-                ring_cost[i,j] = rc[i,j] + 1/2 * backup_offset_list[i] + 1/2 * backup_offset_list[j]
+                ring_cost[i,j] = rc[i,j] + 1/2 * (backup_offset_list[i] + backup_offset_list[j])
             else
                 ring_cost[i,j] = rc[i,j]
             end
             
             backup_cost[i,j] = rc[i,j] - 1/2 * backup_offset_list[i] - 1/2 * backup_offset_list[j]
-            
-            if j in V_certain
-                j!=i || continue
-                star_cost[i,j] = sc[i,j] - star_offset_list[i]
-            else
-                j!=i || continue
-                star_cost[i,j] = sc[i,j] - 1/3 * star_offset_list[i]
-            end
-            
             ring_cost[j,i] = ring_cost[i,j]
-            star_cost[j,i] = star_cost[i,j]
             backup_cost[j,i] = backup_cost[i,j]
+        end
+        
+        for j in V_certain
+            j!=i || continue
+            star_cost[i,j] = sc[i,j] - star_offset_list[i]
+        end
+        
+        for j in V_tilt
+            j!=i || continue
+            star_cost[i,j] = sc[i,j] - 1/3 * star_offset_list[i]
         end
     end
     return offset, opening_cost, ring_cost, star_cost, backup_cost
 end
+
 opening_cost, ring_cost, star_cost = oc, rc, sc
 offset, oc, rc, sc, backup = _transformation_cost()
-# @show opening_cost

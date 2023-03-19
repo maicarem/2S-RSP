@@ -23,6 +23,7 @@ end
 function cal_obj_spi(varphi, gamma, y_hat)
     obj = zeros(Float64, n)
     for i in 1:n
+        y_hat[i,i] == 0 || continue
         obj[i] = 3(1-y_hat[i,i])*varphi[i] + sum([y_hat[j,j]*gamma[i,j] for j in V if j!=i])
     end
     return sum(obj)
@@ -55,28 +56,35 @@ end
 @constraint(master, [(i,j) in T_tilt], sigma >= y[i,i] + y[j,j])
 @constraint(master, y[1,1] == 1)
 
-
 function main_program()
-    for iter0 in 1:100
+    k = 100
+    for iter0 in 1:k
         println("===============Iteration ", iter0, "===============")
         optimize!(master)
         lower_bound = objective_value(master)
         println("Objective value at iteration $(iter0) is $(lower_bound)")
         x_hat, y_hat = value.(x), value.(y)
-        @show sum(value.(lambda))
-        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat)
         
+        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat)
+        # if iter0 == k
+        #     @show x_hat, y_hat
+        #     @show alpha, beta
+        # end
+
         # Objective value, and add cut
         
         obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
         obj_spi = cal_obj_spi(φ, γ, y_hat)
         
+        print("Objective value of SP0 and SP_i is $(obj_sp0) and $(obj_spi)")
+        
+
         if ((value.(lambda_0)+sum(value.(lambda))) - (obj_sp0+obj_spi))/(obj_sp0+obj_spi) >1e-5
             print("This is optimal with objective $(lower_bound)")
             break
         end
 
-        # _add_cut_SP0(alpha,beta)
+        _add_cut_SP0(alpha,beta)
         for i in 1:n
             y_hat[i,i] == 0 || continue
             _add_cut_SPi(φ, γ, i)
