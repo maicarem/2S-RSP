@@ -12,7 +12,7 @@ function _add_cut_SP0(_alpha,_beta)
 end
 
 function _add_cut_SPi(_varphi, _gamma, indice)
-    cut = @constraint(master, lambda[indice] >= 3*(1-y[indice,indice])*_varphi[indice] - sum(y[j,j]*_gamma[indice,j] for j in V if j!=indice))
+    cut = @constraint(master, lambda[indice] >= 3(1-y[indice,indice])*_varphi[indice] - sum(y[j,j]*_gamma[indice,j] for j in V if j!=indice))
     @info "Adding the cut $(cut)"
 end
 
@@ -57,30 +57,31 @@ end
 @constraint(master, y[1,1] == 1)
 
 function main_program()
-    k = 100
-    for iter0 in 1:k
+    for iter0 in 1:1000
         println("===============Iteration ", iter0, "===============")
         optimize!(master)
         lower_bound = objective_value(master)
         println("Objective value at iteration $(iter0) is $(lower_bound)")
         x_hat, y_hat = value.(x), value.(y)
-        
         (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat)
-        # if iter0 == k
-        #     @show x_hat, y_hat
-        #     @show alpha, beta
-        # end
+        
 
         # Objective value, and add cut
         
         obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
         obj_spi = cal_obj_spi(φ, γ, y_hat)
+        upper_bound = (offset + sum(rc[i,j]*x_hat[i,j] for (i,j) in E)+ sum(oc[i]*y_hat[i,i] for i in V)) + obj_sp0 + obj_spi
+        gap = (upper_bound - lower_bound)/upper_bound
         
-        print("Objective value of SP0 and SP_i is $(obj_sp0) and $(obj_spi)")
+        println("Upper bound is $(upper_bound)")
         
 
-        if ((value.(lambda_0)+sum(value.(lambda))) - (obj_sp0+obj_spi))/(obj_sp0+obj_spi) >1e-5
-            print("This is optimal with objective $(lower_bound)")
+        if  gap < 1e-10
+            println("This is optimal with objective $(lower_bound)")
+            @show value.(x)
+            @show value.(y)
+            @show value.(lambda)
+            @show value.(lambda_0)
             break
         end
 
@@ -89,7 +90,8 @@ function main_program()
             y_hat[i,i] == 0 || continue
             _add_cut_SPi(φ, γ, i)
         end
-
+        
+        
     end
 end
 
