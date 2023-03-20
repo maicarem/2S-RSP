@@ -75,13 +75,9 @@ function main_program()
         
         println("Upper bound is $(upper_bound)")
         
-
+        
         if  gap < 1e-10
             println("This is optimal with objective $(lower_bound)")
-            @show value.(x)
-            @show value.(y)
-            @show value.(lambda)
-            @show value.(lambda_0)
             break
         end
 
@@ -91,6 +87,8 @@ function main_program()
             _add_cut_SPi(φ, γ, i)
         end
         
+        
+
         
     end
 end
