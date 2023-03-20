@@ -1,3 +1,4 @@
+include("dat.jl")
 
 # Find list of indices j having s_ij<= s_imi2
 # unhub0: [(ind[i], cost[i]) for i in 1:3]
@@ -15,7 +16,6 @@ end
 # Find first, second and third smallest distance of s_ij, j is uncertain and a hub:: return [(hub1, distance1),...]
 # Input: hub_list, V_tilt
 function uncertain_smallest(hub_list, indice)
-    n = length(sc[indice,:])
     sorted0 = sort([sc[indice, i] for i in 1:n if i in V_tilt && i in hub_list && i != indice])
     ind, cost = zeros(Int, 3), ones(3)*1e18
     if length(sorted0) != 0
@@ -29,7 +29,6 @@ end
 
 # Find indice mi^star and smallest cost 
 function certain_smallest(hub_list, indice)
-    n = length(sc[indice,:])
     sorted0 = sort([sc[indice, i] for i in 1:n if i ∉ V_tilt && i in hub_list && i != indice])
     if length(sorted0)!=0
         ind = Int([j for j in 1:n if sc[indice, j] == sorted0[1] && j in hub_list && j ∉ V_tilt && j != indice][1])
@@ -64,6 +63,18 @@ function _list_hub(_y_hat)
    return hub, hub_tilt 
 end
 
-# include("dat.jl")
-# hub = [1,2,6,3,4,5]
-# @show _uncertain_dict(hub)
+function contain_subtour(x_hat, y_hat)
+    shortest_subtour = []
+    num_hubs = sum([i for i in 1:n if y_hat[i,i] == 1])
+    for i in 1:n
+        for j in 1:n
+            x_hat[i,j] > 0.5 && i!=j || continue
+            if isempty(shortest_subtour) || i in shortest_subtour
+                push!(shortest_subtour, j)
+            elseif j in shortest_subtour
+                push!(shortest_subtour, i)
+            end
+        end
+    end
+    return length(shortest_subtour) == num_hubs + 1
+end
