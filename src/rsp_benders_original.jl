@@ -2,7 +2,7 @@ using JuMP, Gurobi
 using Combinatorics
 
 include("dat.jl")
-include("dual-solution.jl")
+include("dual_solution.jl")
 
 # Add cut constraint
 function _add_cut_SP0(_alpha,_beta)
