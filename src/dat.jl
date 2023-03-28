@@ -1,5 +1,5 @@
 include("read_input.jl")
-n, oc, sc, rc = read_input("instances/small_instances/small_instance_5.dat")
+n, oc, sc, rc = read_input("instances/small_instances/small_instance_20.dat")
 
 
 ABSOLUTE_OPTIMALITY_GAP = 1e-6

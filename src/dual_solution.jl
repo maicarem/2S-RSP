@@ -20,9 +20,9 @@ function _dual_backup_edges(y_hat, x_hat, backup)
     for i in V
         for j in V
             i!=j || continue
-            if x_hat[i,j] == 1 && i ∈ V_tilt && j ∉ beta_prime[i]
+            if round(x_hat[i,j]) == 1 && i ∈ V_tilt && j ∉ beta_prime[i]
                 append!(beta_prime[i], j)
-            elseif x_hat[i,j] == 1 && j ∈ V_tilt && i ∉ beta_prime[j]
+            elseif round(x_hat[i,j]) == 1 && j ∈ V_tilt && i ∉ beta_prime[j]
                 append!(beta_prime[j], i)
             end
         end

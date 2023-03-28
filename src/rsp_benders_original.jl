@@ -3,6 +3,7 @@ using Combinatorics
 
 include("dat.jl")
 include("dual_solution.jl")
+include("misc.jl")
 
 # Add cut constraint
 function _add_cut_SP0(_alpha,_beta)
@@ -31,7 +32,7 @@ end
 
 ############# MASTER PROBLEM ########################################
 
-master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
+master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
 # Decision variables
 @variable(master, x[i in V, j in V], Bin)
 @variable(master, y[i in V,j in V], Bin)
@@ -45,11 +46,11 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
 # Constraint
 @constraint(master, degree_constr[i in V] ,sum(x[i,j] for j in V if i<j) + sum(x[j,i] for j in V if i>j)==  2*y[i,i])
 
-for i in 2:ceil(Int,length(V)/2)
-    for S in combinations(V, i)
-        @constraint(master, length(S) - 1/length(V)*sum(y[i,i] for i in S)>= sum(x[i,j] for i in S for j in S if i<j))
-    end
-end
+# for i in 2:ceil(Int,length(V)/2)
+#     for S in combinations(V, i)
+#         @constraint(master, length(S) - 1/length(V)*sum(y[i,i] for i in S)>= sum(x[i,j] for i in S for j in S if i<j))
+#     end
+# end
 
 @constraint(master, [(i,j) in E], x[i,j] == x[j,i])
 @constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
@@ -59,6 +60,27 @@ end
 function main_program()
     for iter0 in 1:1000
         println("===============Iteration ", iter0, "===============")
+        
+        function my_callback_benders_cut(cb_data)
+            x_hat = Bool.(round.(callback_value.(cb_data, x)))
+            y_hat = Bool.(round.(callback_value.(cb_data, y)))
+            status = callback_node_status(cb_data, master)
+        
+            if status == MOI.CALLBACK_NODE_STATUS_INTEGER
+                # Check subtour in a tour
+                if contain_subtour(x_hat, y_hat) == 0
+                    _list_hub = [i for i in 1:n if y_hat[i,i] == 1]
+                    for i in 2:ceil(Int,length(_list_hub)/2)
+                        for S in combinations(_list_hub, i)
+                            con = @build_constraint(length(S) - 1/length(V)*sum(y[i,i] for i in S)>= sum(x[i,j] for i in S for j in S if i<j))
+                            MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                        end
+                    end
+                end
+            end
+        end
+
+        set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
         optimize!(master)
         lower_bound = objective_value(master)
         println("Objective value at iteration $(iter0) is $(lower_bound)")

@@ -5,7 +5,6 @@ import MathOptInterface as MOI
 
 include("dat.jl")
 include("dual_solution.jl")
-include("ga_warm_start.jl")
 
 # Add cut constraint
 function _add_cut_SP0(_alpha,_beta)
@@ -61,10 +60,38 @@ function main_program()
         status = callback_node_status(cb_data, master)
         
         if status == MOI.CALLBACK_NODE_STATUS_INTEGER
-            # Check subtour in a tour
+            # Check subtour in a tour, if yes -> add benders cut, if no add subtour elimination
             if contain_subtour(x_hat, y_hat)
-                pass
+
+                # debug_subtour("subtour", x_hat, y_hat, 1)
+                
+                lambda_0_hat = callback_value(cb_data, lambda_0)
+                lambda_hat = callback_value.(cb_data, lambda)
+                lower_bound = offset + sum(rc[i,j]*x_hat[i,j] for (i,j) in E)+ sum(oc[i]*y_hat[i,i] for i in V)+ lambda_0_hat + sum(lambda_hat[i] for i in V)
+                
+                (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat)
+            
+                obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
+                obj_spi = cal_obj_spi(φ, γ, y_hat)
+
+                upper_bound = (offset + sum(rc[i,j] * x_hat[i,j] for (i,j) in E)+ sum(oc[i] * y_hat[i,i] for i in V)) + obj_sp0 + obj_spi
+                gap = (upper_bound - lower_bound)/upper_bound
+                
+                if gap > 1e-10
+                    
+                    # add cut SP0
+                    con = @build_constraint(lambda_0 >= sum((x[k,i]+2*x[i,j]+x[j,t]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x[i,j]+x[j,k]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
+                    MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                    
+                    # add cut SP_i
+                    for i in 1:n
+                        y_hat[i,i] == 0 || continue
+                        con = @build_constraint(lambda[i] >= 3(1-y[i,i])*φ[i] - sum(y[j,j]*γ[i,j] for j in V if j!=i))
+                        MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                    end
+                end
             else
+                # add subtour elimination
                 _list_hub = [i for i in 1:n if y_hat[i,i] == 1]
                 for i in 2:ceil(Int,length(_list_hub)/2)
                     for S in combinations(_list_hub, i)
@@ -73,34 +100,7 @@ function main_program()
                     end
                 end
             end
-
             # Add cut from subproblems
-            
-            lambda_0_hat = callback_value(cb_data, lambda_0)
-            lambda_hat = callback_value.(cb_data, lambda)
-            lower_bound = offset + sum(rc[i,j]*x_hat[i,j] for (i,j) in E)+ sum(oc[i]*y_hat[i,i] for i in V)+ lambda_0_hat + sum(lambda_hat[i] for i in V)
-            
-            (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat)
-        
-            obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
-            obj_spi = cal_obj_spi(φ, γ, y_hat)
-
-            upper_bound = (offset + sum(rc[i,j] * x_hat[i,j] for (i,j) in E)+ sum(oc[i] * y_hat[i,i] for i in V)) + obj_sp0 + obj_spi
-            gap = (upper_bound - lower_bound)/upper_bound
-            
-            if gap > 1e-10
-                
-                # add cut SP0
-                con = @build_constraint(lambda_0 >= sum((x[k,i]+2*x[i,j]+x[j,t]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x[i,j]+x[j,k]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
-                MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                
-                # add cut SP_i
-                for i in 1:n
-                    y_hat[i,i] == 0 || continue
-                    con = @build_constraint(lambda[i] >= 3(1-y[i,i])*φ[i] - sum(y[j,j]*γ[i,j] for j in V if j!=i))
-                    MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                end
-            end
         end
     end
 

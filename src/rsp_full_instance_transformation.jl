@@ -36,9 +36,7 @@ function my_callback_benders_cut(cb_data)
 
     if status == MOI.CALLBACK_NODE_STATUS_INTEGER
         # Check subtour in a tour
-        if contain_subtour(x_hat, y_hat)
-            pass
-        else
+        if contain_subtour(x_hat, y_hat) == 0
             _list_hub = [i for i in 1:n if y_hat[i,i] == 1]
             for i in 2:ceil(Int,length(_list_hub)/2)
                 for S in combinations(_list_hub, i)
