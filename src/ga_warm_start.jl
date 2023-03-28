@@ -214,7 +214,7 @@ function genetic_algorithm(size_pop, size_iter)
         end
     end
     min0 = argmin(obj_pop)
-    return init_ring(popu[min0]), obj_pop[min0]
+    return init_ring(popu[min0])
 end
 
 @show genetic_algorithm(20,20)

@@ -86,10 +86,6 @@ function main_program()
             y_hat[i,i] == 0 || continue
             _add_cut_SPi(φ, γ, i)
         end
-        
-        
-
-        
     end
 end
 
