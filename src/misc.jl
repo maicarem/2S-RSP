@@ -1,3 +1,4 @@
+using LightGraphs
 include("dat.jl")
 
 # Find list of indices j having s_ij<= s_imi2
@@ -64,17 +65,79 @@ function _list_hub(_y_hat)
 end
 
 function contain_subtour(x_hat, y_hat)
-    shortest_subtour = []
-    num_hubs = sum([i for i in 1:n if y_hat[i,i] == 1])
+
+    visited = zeros(Int, n)
+    parent = zeros(Int, n)
+    vistime = zeros(Int, n)
+    adjacent_list = Dict()
+    
+    timer = 0
+    cycle_count = 0
+
     for i in 1:n
-        for j in 1:n
-            x_hat[i,j] > 0.5 && i!=j || continue
-            if isempty(shortest_subtour) || i in shortest_subtour
-                push!(shortest_subtour, j)
-            elseif j in shortest_subtour
-                push!(shortest_subtour, i)
+        if y_hat[i,i] == 1
+            adjacent_list[i] = []
+            for j in 1:n
+                if x_hat[i,j] == 1
+                    append!(adjacent_list[i], j)
+                end
+            end
+        else
+            visited[i] = 1
+        end
+    end
+    
+    visited[1] = 1
+    function dfs(node)
+        
+        for next in adjacent_list[node]
+            if visited[next] == 0
+                visited[next] = 1
+                timer +=1
+                vistime[next] = timer
+                parent[next] = node
+                dfs(next)
+            elseif visited[next] == 1 && parent[node] == next
+                continue
+            elseif visited[next] == 1 && parent[node] != next && vistime[next]< timer
+                cycle_count +=1
+                continue
             end
         end
     end
-    return length(shortest_subtour) == num_hubs + 1
+    dfs(1)
+    return cycle_count == 1
+end
+
+function cal_obj_sp0(alpha, beta, x_hat)
+    if length(V_tilt) == 1
+        return sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt)
+    elseif length(V_tilt) == 0
+        return 0
+    else
+        return sum((x_hat[k,i] + x_hat[i,j]+x_hat[j,t] - 2) * alpha[i,j,k,t] for (i,j,k,t) in J_tilt) + sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt)
+    end
+end
+
+
+function cal_obj_spi(varphi, gamma, y_hat)
+    obj = zeros(Float64, n)
+    for i in 1:n
+        y_hat[i,i] == 0 || continue
+        obj[i] = 3(1-y_hat[i,i])*varphi[i] + sum([y_hat[j,j]*gamma[i,j] for j in V if j!=i])
+    end
+    return sum(obj)
+end
+
+function minmax(i,j)
+    return min(i,j), max(i,j)
+end
+
+function _transform_matrix(x)
+    x_hat = zeros(Bool, n,n)
+    for (i,j) in E
+        x_hat[i,j] = Bool(x[i,j])
+        x_hat[j,i] = Bool(x[i,j])
+    end
+    return x_hat
 end
