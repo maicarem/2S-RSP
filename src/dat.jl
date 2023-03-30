@@ -1,5 +1,5 @@
 include("read_input.jl")
-n, oc, sc, rc = read_input("instances/small_instances/large_instance_300.dat")
+n, oc, sc, rc = read_input("instances/small_instances/small_instance_10.dat")
 
 
 ABSOLUTE_OPTIMALITY_GAP = 1e-6
@@ -7,7 +7,7 @@ bench = 0.5
 
 # Declare sets
 V = 1:n
-V_tilt = []
+V_tilt = 2:n
 V_certain = [i for i in V if i ∉ V_tilt]
 A = [(i,j) for i in V for j in V if i !=j]
 A_prime = [(i,j) for i in V for j in V]
@@ -87,7 +87,8 @@ function _transformation_cost()
             star_cost[i,j] = sc[i,j] - 1/3 * star_offset_list[i]
         end
     end
-    return offset, opening_cost, ring_cost, star_cost, backup_cost
+    # Check again the instance transformation for the backup cost, now revert to unchanged
+    return offset, opening_cost, rc, star_cost, rc
 end
 
 opening_cost, ring_cost, star_cost = oc, rc, sc
