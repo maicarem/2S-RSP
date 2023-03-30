@@ -88,6 +88,7 @@ function contain_subtour(x_hat, y_hat)
     end
     
     visited[1] = 1
+
     function dfs(node)
         
         for next in adjacent_list[node]
@@ -106,7 +107,13 @@ function contain_subtour(x_hat, y_hat)
         end
     end
     dfs(1)
-    return cycle_count == 1
+
+    if sum(visited) != length(visited)
+        return false
+    else
+        return cycle_count == 1
+    end
+    
 end
 
 function cal_obj_sp0(alpha, beta, x_hat)
