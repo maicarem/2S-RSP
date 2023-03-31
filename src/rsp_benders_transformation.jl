@@ -32,7 +32,7 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
 @variable(master, lambda[i in V]>=0)
 
 # Objective Function
-@objective(master, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i,i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
+@objective(master, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i,i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
 
 # Constraint
 @constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i,i])
@@ -51,7 +51,6 @@ function main_program()
         println("===============Iteration ", iter0, "===============")
         
         function my_callback_benders_cut(cb_data)
-            
             x_hat = Bool.(round.(callback_value.(cb_data, x)))
             y_hat = Bool.(round.(callback_value.(cb_data, y)))
             x_hat = _transform_matrix(x_hat)
@@ -79,7 +78,7 @@ function main_program()
         x_hat = _transform_matrix(x_hat_1)
         lambda_0_hat, lambda_hat = value(lambda_0), round.(value.(lambda))
 
-        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, ring_cost, star_cost)
+        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, rc, sc)
         # Objective value, and add cut
         
         obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
@@ -87,7 +86,7 @@ function main_program()
         
         
 
-        upper_bound =  sum(ring_cost[i,j]*x_hat[i,j] for (i,j) in E)+ sum(opening_cost[i]*y_hat[i,i] for i in V) + obj_sp0 + obj_spi
+        upper_bound =  offset + sum(rc[i,j]*x_hat[i,j] for (i,j) in E)+ sum(oc[i]*y_hat[i,i] for i in V) + obj_sp0 + obj_spi
 
         open("result/bender/debug_$(iter0).txt","w") do io
             println(io, "Lower bound: $(lower_bound)")
