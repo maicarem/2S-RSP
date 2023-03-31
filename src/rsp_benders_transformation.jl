@@ -62,7 +62,7 @@ function main_program()
                     _list_hub = [i for i in 1:n if y_hat[i,i] == 1]
                     for i in 2:ceil(Int,length(_list_hub)/2)
                         for S in combinations(_list_hub, i)
-                            con = @build_constraint(length(S) - 1/length(V)*sum(y[i,i] for i in S)>= sum(x[minmax(i,j)] for i in S for j in S if i<j))
+                            con = @build_constraint(length(S) - 1/length(_list_hub)*sum(y[i,i] for i in S)>= sum(x[minmax(i,j)] for i in S for j in S if i<j))
                             MOI.submit(master, MOI.LazyConstraint(cb_data), con)
                         end
                     end
