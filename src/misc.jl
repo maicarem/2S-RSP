@@ -128,7 +128,13 @@ end
 
 
 function cal_obj_spi(varphi, gamma, y_hat)
-    return 3*sum(varphi[i] for i in 1:n if y_hat[i,i] == 0)
+    obj = 0
+    for i in 1:n
+        y_hat[i,i] == 0 || continue
+        obj+= 3*varphi[i]
+    end
+    return obj
+    # return 3*sum(varphi[i] for i in 1:n if y_hat[i,i] == 0)
 end
 
 function minmax(i,j)
