@@ -48,6 +48,32 @@ function main_program()
                 obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
                 obj_spi = cal_obj_spi(φ, γ, y_hat)
                 
+                # write results
+                open("debug.txt","w") do io
+                    for i in 1:n
+                        if y_hat[i,i] == 0 && φ[i]!= 0
+                            println(io, "varphi[$(i)] = $(φ[i])")
+                        end
+                        for j in 1:n
+                            if x_hat[i,j] ==1
+                                println(io, "x[$(i), $(j)] = 1, cost = $(rc[i,j])")
+                            end
+                            for k in 1:n
+                                if beta[i,j,k] != 0
+                                    println(io, "beta[$(i),$(j),$(k)] = $(beta[i,j,k]), cost = $(backup[i,k])")
+                                end
+                                for t in 1:n
+                                    if alpha[i,j,k,t] != 0
+                                        println(io, "alpha[$(i),$(j),$(k), $(t)] = $(alpha[i,j,k,t]), cost = $(backup[k,t])")
+                                    end
+                                end
+                            end
+                        end
+                    end  
+                    println(io,"Result for SP0: $(obj_sp0)")   
+                    println(io,"Result for SPi: $(obj_spi)")   
+                end
+
                 upper_bound = (offset + sum(rc[i,j] * x_hat[i,j] for (i,j) in E)+ sum(oc[i] * y_hat[i,i] for i in V)) + obj_sp0 + obj_spi
                 
                 gap = (upper_bound - lower_bound)/upper_bound
