@@ -92,7 +92,7 @@ function _dual_star_structure(_y_hat, sc)
     return φ, γ
 end
 
-function dual_solution(y_hat, x_hat) 
+function dual_solution(y_hat, x_hat, backup, sc) 
     # Output: beta, alpha, φ, γ
     return _dual_backup_edges(y_hat, x_hat, backup), _dual_star_structure(y_hat, sc)
 end
