@@ -1,7 +1,8 @@
-#=
+"""
 Find dual solution
 Input: y_hat, x_hat: structure of the ring
-=#
+"""
+
 include("misc.jl")
 include("dat.jl")
 
@@ -56,7 +57,7 @@ function _dual_backup_edges(y_hat, x_hat, backup)
     return beta, alpha
 end
 # Find φ_i in SP_i
-function _cal_varphi(i)
+function _cal_varphi(i, sc)
     if length(V_tilt) == n
         return minimum(sc[i,V_tilt])
     elseif length(V_certain) == n
@@ -66,7 +67,7 @@ function _cal_varphi(i)
     end
 end
 
-function _dual_star_structure(_y_hat)
+function _dual_star_structure(_y_hat, sc)
     H, H_tilt = _list_hub(_y_hat)
     uncertain_dist, _ = _uncertain_dict(H)
     # @show uncertain_dist
@@ -74,7 +75,7 @@ function _dual_star_structure(_y_hat)
 
     for i in 1:n
         if i in H
-            φ[i] = _cal_varphi(i) # generate cut if i is a hub
+            φ[i] = _cal_varphi(i, sc) # generate cut if i is a hub
         else
             x = min(certain_smallest(H, i)[2], uncertain_dist[i][1][2]+uncertain_dist[i][2][2]+uncertain_dist[i][3][2])
             φ[i] = x/3
@@ -93,7 +94,7 @@ end
 
 function dual_solution(y_hat, x_hat) 
     # Output: beta, alpha, φ, γ
-    return _dual_backup_edges(y_hat, x_hat, backup), _dual_star_structure(y_hat)
+    return _dual_backup_edges(y_hat, x_hat, backup), _dual_star_structure(y_hat, sc)
 end
 
 # y_hat = [1.0  0.0  0.0  0.0  0.0  0.0;
