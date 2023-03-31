@@ -128,11 +128,6 @@ end
 
 
 function cal_obj_spi(varphi, gamma, y_hat)
-    # obj = zeros(Float64, n)
-    # for i in 1:n
-    #     y_hat[i,i] == 0 || continue
-    #     obj[i] = 3(1-y_hat[i,i])*varphi[i] + sum([y_hat[j,j]*gamma[i,j] for j in V if j!=i])
-    # end
     return 3*sum(varphi)
 end
 
