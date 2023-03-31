@@ -3,7 +3,7 @@ include("dat.jl")
 
 # Find list of indices j having s_ij<= s_imi2
 # unhub0: [(ind[i], cost[i]) for i in 1:3]
-function find_omega_i(unhub0, hub_list, indice)
+function find_omega_i(unhub0, hub_list, indice, star_cost0)
     _cost = unhub0[2][2]
     if _cost == 1e18
         _cost = unhub0[1][2]
@@ -11,42 +11,42 @@ function find_omega_i(unhub0, hub_list, indice)
             _cost = 0
         end
     end
-    return [i for i in 1:length(sc[indice,:]) if sc[indice,i] <= _cost && i ∈ V_tilt && i ∈ hub_list]
+    return [i for i in 1:length(star_cost0[indice,:]) if star_cost0[indice,i] <= _cost && i ∈ V_tilt && i ∈ hub_list]
 end
 
 # Find first, second and third smallest distance of s_ij, j is uncertain and a hub:: return [(hub1, distance1),...]
 # Input: hub_list, V_tilt
-function uncertain_smallest(hub_list, indice)
-    sorted0 = sort([sc[indice, i] for i in 1:n if i in V_tilt && i in hub_list && i != indice])
+function uncertain_smallest(hub_list, indice, star_cost0)
+    sorted0 = sort([star_cost0[indice, i] for i in 1:n if i in V_tilt && i in hub_list && i != indice])
     ind, cost = zeros(Int, 3), ones(3)*1e18
     if length(sorted0) != 0
         for i in 1: min(3, length(sorted0))
-            ind[i] = [j for j in 1:n if sc[indice, j] == sorted0[i] && j in hub_list && j in V_tilt && j ∉ ind && j != indice][1]
-            cost[i] = sc[indice, ind[i]]
+            ind[i] = [j for j in 1:n if star_cost0[indice, j] == sorted0[i] && j in hub_list && j in V_tilt && j ∉ ind && j != indice][1]
+            cost[i] = star_cost0[indice, ind[i]]
         end
     end
     return [(ind[i], cost[i]) for i in 1:3]
 end
 
 # Find indice mi^star and smallest cost 
-function certain_smallest(hub_list, indice)
-    sorted0 = sort([sc[indice, i] for i in 1:n if i ∉ V_tilt && i in hub_list && i != indice])
+function certain_smallest(hub_list, indice, star_cost0)
+    sorted0 = sort([star_cost0[indice, i] for i in 1:n if i ∉ V_tilt && i in hub_list && i != indice])
     if length(sorted0)!=0
-        ind = Int([j for j in 1:n if sc[indice, j] == sorted0[1] && j in hub_list && j ∉ V_tilt && j != indice][1])
-        cost = sc[indice, ind]
+        ind = Int([j for j in 1:n if star_cost0[indice, j] == sorted0[1] && j in hub_list && j ∉ V_tilt && j != indice][1])
+        cost = star_cost0[indice, ind]
     else
         ind, cost = 0, 1e18
     end
     return (ind, cost)
 end
 
-function _uncertain_dict(hub_list)
+function _uncertain_dict(hub_list, star_cost0)
     _smallest_uncertain_dict = Dict()
     _Omega_dict = Dict()
     for i in 1:n
         if i ∉ hub_list
-            _smallest_uncertain_dict[i] = uncertain_smallest(hub_list, i)
-            _Omega_dict[i] = find_omega_i(_smallest_uncertain_dict[i], hub_list, i)
+            _smallest_uncertain_dict[i] = uncertain_smallest(hub_list, i, star_cost0)
+            _Omega_dict[i] = find_omega_i(_smallest_uncertain_dict[i], hub_list, i, star_cost0)
         end
     end
     return _smallest_uncertain_dict, _Omega_dict
@@ -128,7 +128,7 @@ end
 
 
 function cal_obj_spi(varphi, gamma, y_hat)
-    return 3*sum(varphi)
+    return 3*sum(varphi[i] for i in 1:n if y_hat[i,i] == 0)
 end
 
 function minmax(i,j)
@@ -142,4 +142,22 @@ function _transform_matrix(x)
         x_hat[j,i] = Bool(x[i,j])
     end
     return x_hat
+end
+
+function transform_route(x_hat)
+    path = [1]
+    num0 = size(x_hat)[1]
+    while length(path) < 2 || path[1]!=path[end]
+        if length(path) == sum(x_hat[i,j] for i in 1:num0 for j in 1:num0 if i<j)
+            break
+        else
+            for vertex in 2:num0
+                if x_hat[path[end], vertex] == 1 && vertex ∉ path[2:end]
+                    push!(path, vertex)
+                    break
+                end
+            end
+        end
+    end
+    return push!(path,1)
 end
