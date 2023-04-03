@@ -167,3 +167,46 @@ function transform_route(x_hat)
     end
     return push!(path,1)
 end
+
+function dfs(node, adjacent_list, visited, cycle)
+    visited[node] = 1
+    for next in adjacent_list[node]
+        !(visited[next]) || continue
+        append!(cycle, next)
+        dfs(next, adjacent_list, visited, cycle)
+    end
+end
+
+function find_cycle(x_hat, y_hat)
+    
+    adjacent_list = Dict()
+    num0 = size(x_hat)[1]
+    visited = zeros(Bool, num0)
+    hub_list = []
+    all_cycles = []
+
+    for i in 1: num0
+        adjacent_list[i] = []
+        
+        if y_hat[i,i]
+            append!(hub_list, i)
+        else
+            visited[i] = 1
+        end
+
+        for j in 1: num0
+            x_hat[i,j] || continue
+            append!(adjacent_list[i], j)
+        end
+    
+    end
+    
+    for i in hub_list
+        !(visited[i]) || continue
+        cycle = [i]
+        dfs(i, adjacent_list, visited, cycle)
+        push!(all_cycles, cycle)
+    end
+    return all_cycles
+
+end
