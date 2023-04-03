@@ -33,22 +33,30 @@ main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 @constraint(main, y[1,1] == 1)
 
 function my_callback_benders_cut(cb_data)
-    x_hat = Bool.(round.(callback_value.(cb_data, x)))
-    y_hat = Bool.(round.(callback_value.(cb_data, y)))
     
-    # transform_to_matrix:
+    x_hat = Bool.(round.(callback_value.(cb_data, x)))
+    y_hat1 = Bool.(round.(callback_value.(cb_data, y)))
     x_hat = _transform_matrix(x_hat)
+    
     status = callback_node_status(cb_data, main)
+    
+    y_hat = zeros(Bool, n)
+    for i in 1:n
+        y_hat1[i,i] == 1 || continue
+        y_hat[i] = 1
+    end
+    
+    all_cycles = find_cycle(x_hat, y_hat)
 
     if status == MOI.CALLBACK_NODE_STATUS_INTEGER
         # Check subtour in a tour
-        if contain_subtour(x_hat, y_hat) == 0
-            _list_hub = [i for i in 1:n if y_hat[i,i] == 1]
-            for i in 2:ceil(Int,length(_list_hub)/2)
-                for S in combinations(_list_hub, i)
-                    con = @build_constraint(length(S) - 1/length(_list_hub)*sum(y[i,i] for i in S)>= sum(x[minmax(i,j)] for i in S for j in S if i<j))
-                    MOI.submit(main, MOI.LazyConstraint(cb_data), con)
-                end
+        if length(all_cycles) > 1
+            _list_hub = [i for i in 1:n if y_hat[i] == 1]
+            # add subtour elimination
+            for each_cycle in all_cycles
+                con = @build_constraint(length(each_cycle) - 1/(length(_list_hub)- length(each_cycle))*sum(y[i,i] for i in _list_hub if i ∉ each_cycle)>= 
+                sum(x[minmax(each_cycle[i], each_cycle[i+1])] for i in eachindex(each_cycle[1:end-1]))+ x[minmax(each_cycle[1], each_cycle[end])])
+                MOI.submit(main, MOI.LazyConstraint(cb_data), con)
             end
         end
     end
