@@ -56,7 +56,7 @@ function _list_hub(_y_hat)
     hub = []
     hub_tilt = []
     for i in 1:n
-        _y_hat[i,i] == 1 || continue
+        _y_hat[i] == 1 || continue
         push!(hub, i)
         i ∈ V_tilt || continue
         push!(hub_tilt, i)
@@ -75,7 +75,7 @@ function contain_subtour(x_hat, y_hat)
     cycle_count = 0
 
     for i in 1:n
-        if y_hat[i,i] == 1
+        if y_hat[i] == 1
             adjacent_list[i] = []
             for j in 1:n
                 if x_hat[i,j] == 1
@@ -130,7 +130,7 @@ end
 function cal_obj_spi(varphi, gamma, y_hat)
     obj = 0
     for i in 1:n
-        y_hat[i,i] == 0 || continue
+        y_hat[i] == 0 || continue
         obj+= 3*varphi[i]
     end
     return obj
@@ -188,7 +188,7 @@ function find_cycle(x_hat, y_hat)
     for i in 1: num0
         adjacent_list[i] = []
         
-        if y_hat[i,i]
+        if y_hat[i]
             append!(hub_list, i)
         else
             visited[i] = 1

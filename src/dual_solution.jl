@@ -31,14 +31,14 @@ function _dual_backup_edges(y_hat, x_hat, backup0)
 
     # Find dual beta[i,j,k], i<k
     for i in V_tilt
-        y_hat[i,i] == 1 && (beta_prime[i][1], beta_prime[i][2]) ∉ keys(saved0) || continue
+        y_hat[i] == 1 && (beta_prime[i][1], beta_prime[i][2]) ∉ keys(saved0) || continue
         beta[beta_prime[i][1],i, beta_prime[i][2]] = backup0[beta_prime[i][1], beta_prime[i][2]]
         saved0[(beta_prime[i][1], beta_prime[i][2])] = 1
     end
     
     # Find alpha[i,j,k,t], k<t
     for i in V_tilt
-        y_hat[i,i] == 1 || continue
+        y_hat[i] == 1 || continue
         for j in beta_prime[i]
             j ∈ V_tilt || continue
             _m0 = [k for k in beta_prime[i] if k!=j][1]
