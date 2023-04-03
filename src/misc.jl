@@ -144,8 +144,8 @@ end
 function _transform_matrix(x)
     x_hat = zeros(Bool, n,n)
     for (i,j) in E
-        x_hat[i,j] = Bool(x[i,j])
-        x_hat[j,i] = Bool(x[i,j])
+        x_hat[i,j] = Bool(round(x[i,j]))
+        x_hat[j,i] = Bool(round(x[i,j]))
     end
     return x_hat
 end
