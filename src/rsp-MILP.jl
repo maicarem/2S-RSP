@@ -5,6 +5,12 @@ include("dat.jl")
 include("misc.jl")
 include("write_output.jl")
 
+# Initialize Sets
+V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 1)
+opening_cost, ring_cost, star_cost = oc, rc, sc
+offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
+
+
 main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 # Decision variables
 @variable(main, x[i in V, j in V; i<j], Bin)
