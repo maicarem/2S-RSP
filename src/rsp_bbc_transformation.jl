@@ -53,7 +53,7 @@ function main_program()
                 
                 lower_bound = offset + sum(rc[i,j]*x_hat[i,j] for (i,j) in E)+ sum(oc[i]*y_hat[i] for i in V)+ lambda_0_hat + sum(lambda_hat[i] for i in V)
                 
-                (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, rc,rc,sc)
+                (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, backup, ring_cost, sc)
                 
                 obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
                 obj_spi = cal_obj_spi(φ, γ, y_hat)
@@ -74,7 +74,7 @@ function main_program()
                         con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
                         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
                         
-                        distance = _find_lower_bound_backup(_list_hub, rc)
+                        distance = _find_lower_bound_backup(_list_hub, backup)
                         con2 = @build_constraint(lambda_0 >= sum(y[i]*distance[i] for i in _list_hub)) 
                         MOI.submit(master, MOI.LazyConstraint(cb_data), con2)
 
@@ -115,18 +115,6 @@ function main_program()
                         println(io, "Subtour: $(con)")
                     end
                 end
-                
-                # # @info "Subtour detected: $(transform_route(x_hat))"
-                # for k in 1:ceil(Int,length(_list_hub)/2)
-                #     for S in combinations(_list_hub, k)
-                #         con = @build_constraint(length(S) - 1/(length(_list_hub)- length(S))*sum(y[i] for i in _list_hub if i ∉ S)>= 
-                #                                 sum(x[i,j] for i in S for j in S if i<j))
-                #         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                #         open("debug000.txt", "a") do io
-                #             println(io, "Subtour: $(con)")
-                #         end
-                #     end
-                # end
             end
         end
     end
@@ -149,6 +137,11 @@ function main_program()
         println(io, "SPi: $(sum(lambda_hat))")
         println(io, master)
         
+        println(io, "backup:")
+        println(io, backup)
+
+        println(io, "ring cost transformation:")
+        println(io, rc)
     end
     
     # @show solution_summary(master)
