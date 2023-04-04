@@ -19,7 +19,7 @@ main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 @variable(main, sigma)
 
 # # Objective function
-@objective(main, Min, sum(ring_cost[i,j]*(x[i,j]+x_prime[i,j]) for (i,j) in E)+ sum(opening_cost[i]*y[i,i] for i in V)+ sum(star_cost[i,j]*y[i,j] for (i,j) in A))
+@objective(main, Min, sum(ring_cost[i,j]*(x[i,j]+x_prime[ti,j]) for (i,j) in E)+ sum(opening_cost[i]*y[i,i] for i in V)+ sum(star_cost[i,j]*y[i,j] for (i,j) in A))
 
 # comment
 @constraint(main, degree_constr[i in V], sum(x[minmax(i,j)] for j in V if i<j) + sum(x[minmax(j,i)] for j in V if i>j)==  2*y[i,i])
