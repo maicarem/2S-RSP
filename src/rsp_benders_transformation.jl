@@ -5,11 +5,17 @@ include("dat.jl")
 include("dual_solution.jl")
 include("misc.jl")
 
+
+# Initialize Sets
+V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 0)
+opening_cost, ring_cost, star_cost = oc, rc, sc
+offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
+
 # Add cut constraint
 function _add_cut_SP0(_alpha,_beta,_lambda_0, _x_hat)
-    if !(_lambda_0 >= sum((_x_hat[minmax(k,i)]+2*_x_hat[minmax(i,j)]+_x_hat[minmax(j,t)]-3)*_alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((_x_hat[minmax(i,j)]+_x_hat[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in K_tilt))
+    if !(_lambda_0 >= sum((_x_hat[minmax(k,i)]+2*_x_hat[minmax(i,j)]+_x_hat[minmax(j,t)]-3)*_alpha[i,j,k,t] for (i,j,k,t) in find_index(_alpha))+ sum((_x_hat[minmax(i,j)]+_x_hat[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in find_index(_beta)))
         cut = @constraint(master, lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*_alpha[i,j,k,t]
-                            for (i,j,k,t) in J_tilt)+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in K_tilt))
+                            for (i,j,k,t) in find_index(_alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in find_index(_beta)))
         @info "Adding the cut $(cut)"
     end
 end
@@ -35,9 +41,11 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
 @objective(master, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
 
 # Constraint
-@constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i])
-@constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
-@constraint(master, [(i,j) in T_tilt], sigma >= y[i] + y[j])
+@constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j) ==  2*y[i])
+@constraint(master, sum(x[i,j] for (i,j) in E) >= 5)
+
+# @constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
+# @constraint(master, [(i,j) in T_tilt], sigma >= y[i] + y[j])
 @constraint(master, y[1] == 1)
 
 # @constraint(master, x[1,2] == 1)
@@ -79,7 +87,7 @@ function main_program()
         x_hat = _transform_matrix(x_hat_1)
         lambda_0_hat, lambda_hat = value(lambda_0), round.(value.(lambda))
 
-        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, rc, sc)
+        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, backup, ring_cost, sc)
         # Objective value, and add cut
         
         obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
