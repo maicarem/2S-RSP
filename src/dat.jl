@@ -1,23 +1,28 @@
 include("read_input.jl")
 n, oc, sc, rc = read_input("instances/small_instances/small_instance_10.dat")
 
-
-ABSOLUTE_OPTIMALITY_GAP = 1e-6
-bench = 0.5
-
 # Declare sets
-V = 1:n
-V_tilt = 2:n
-V_certain = [i for i in V if i ∉ V_tilt]
-A = [(i,j) for i in V for j in V if i !=j]
-A_prime = [(i,j) for i in V for j in V]
-E = [(i,j) for i in V for j in V if i<j]
-J_tilt = [(i,j,k,t) for k in V for t in V for i in V_tilt for j in V_tilt if k<t && i!=j && i!=k && i!=t && j!=k && j!=t]
-K_tilt = [(i,j,k) for k in V for i in V for j in V_tilt if i<k && i!=j && j!=k]
-T_tilt = [(i,j) for i in V_tilt for j in V_tilt if i<j]
+function _declare_set(n, enabled)
+    V = 1:n
+    V_tilt = 2:n
+    V_certain = [i for i in V if i ∉ V_tilt]
+    A = [(i,j) for i in V for j in V if i !=j]
+    A_prime = [(i,j) for i in V for j in V]
+    E = [(i,j) for i in V for j in V if i<j]
+    T_tilt = [(i,j) for i in V_tilt for j in V_tilt if i<j]
+    if enabled == 1
+        J_tilt = [(i,j,k,t) for k in V for t in V for i in V_tilt for j in V_tilt if k<t && i!=j && i!=k && i!=t && j!=k && j!=t]
+        K_tilt = [(i,j,k) for k in V for i in V for j in V_tilt if i<k && i!=j && j!=k]
+    else
+        J_tilt = []
+        K_tilt = []
+    end
+    
+    return V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt
+end
 
 # Instance transformation
-function _find_offset_star()
+function _find_offset_star(n, V_tilt, V_certain, sc)
     offset = zeros(Float64, n)
     for i in 1:n
         _V_tilt = [j for j in V_tilt if j!=i]
@@ -36,7 +41,7 @@ function _find_offset_star()
     return offset
 end
 
-function _find_offset_backup()
+function _find_offset_backup(n, rc)
     offset_backup = zeros(Float64, n)
     for i in 1:n
         offset_backup[i] = minimum(rc[1:n .!= i, i])
@@ -44,10 +49,10 @@ function _find_offset_backup()
     return offset_backup
 end
 
-function _transformation_cost()
+function _transformation_cost(rc, sc, oc, n, V_tilt, V_certain)
     
-    star_offset_list = _find_offset_star()
-    backup_offset_list = _find_offset_backup()
+    star_offset_list = _find_offset_star(n, V_tilt, V_certain, sc)
+    backup_offset_list = _find_offset_backup(n, rc)
     offset = sum([star_offset_list[i] for i in 1:n])
     
     opening_cost = zeros(Float64, n)
@@ -91,6 +96,6 @@ function _transformation_cost()
     return offset, opening_cost, ring_cost, star_cost, backup_cost
     # return offset, opening_cost, rc, star_cost, rc # <- this one is unchanged
 end
-
-opening_cost, ring_cost, star_cost = oc, rc, sc
-offset, oc, rc, sc, backup = _transformation_cost()
+# V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 1)
+# opening_cost, ring_cost, star_cost = oc, rc, sc
+# offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)

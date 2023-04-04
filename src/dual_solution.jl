@@ -3,9 +3,6 @@ Find dual solution
 Input: y_hat, x_hat: structure of the ring
 """
 
-include("misc.jl")
-include("dat.jl")
-
 function _dual_backup_edges(y_hat, x_hat, backup_edge_1, backup_edge_2)
     
     alpha = zeros(Float64, n,n,n,n)

@@ -1,5 +1,4 @@
 using LightGraphs
-include("dat.jl")
 
 # Find list of indices j having s_ij<= s_imi2
 # unhub0: [(ind[i], cost[i]) for i in 1:3]
@@ -117,12 +116,14 @@ end
 # end
 
 function cal_obj_sp0(alpha, beta, x_hat)
+    K_tilt_1 = find_index(beta)
+    J_tilt_1 = find_index(alpha)
     if length(V_tilt) == 1
-        return sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt)
+        return sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt_1)
     elseif length(V_tilt) == 0
         return 0
     else
-        return sum((x_hat[k,i] + x_hat[i,j]+x_hat[j,t] - 2) * alpha[i,j,k,t] for (i,j,k,t) in J_tilt) + sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt)
+        return sum((x_hat[k,i] + x_hat[i,j]+x_hat[j,t] - 2) * alpha[i,j,k,t] for (i,j,k,t) in J_tilt_1) + sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt_1)
     end
 end
 
@@ -219,3 +220,8 @@ function _find_lower_bound_backup(list_hub, edge_matrix)
     end
     return distance
 end
+
+function find_index(alpha)
+    return Tuple.(findall(!iszero ,alpha))
+end
+
