@@ -6,6 +6,13 @@ import MathOptInterface as MOI
 include("dat.jl")
 include("dual_solution.jl")
 include("write_output.jl")
+include("misc.jl")
+
+
+# Initialize Sets
+V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 0)
+opening_cost, ring_cost, star_cost = oc, rc, sc
+offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
 
 ############# MASTER PROBLEM ########################################
 
@@ -22,8 +29,10 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
 
 # Constraint
 @constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i])
-@constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
-@constraint(master, [(i,j) in T_tilt], sigma >= y[i] + y[j])
+@constraint(master, sum(x[i,j] for (i,j) in E) >= 5)
+
+# @constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
+# @constraint(master, [(i,j) in T_tilt], sigma >= y[i] + y[j])
 @constraint(master, y[1] == 1)
 
 # @constraint(master, x[1,2] == 1)
@@ -70,8 +79,8 @@ function main_program()
 
                     # add cut SP0
                     
-                    if !(lambda_0_hat >= sum((x_hat_1[minmax(k,i)]+2*x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
-                        con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
+                    if !(lambda_0_hat >= sum((x_hat_1[minmax(k,i)]+2*x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
+                        con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
                         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
                         
                         distance = _find_lower_bound_backup(_list_hub, backup)
@@ -136,7 +145,7 @@ function main_program()
         println(io, "SP0: $(lambda_0_hat)")
         println(io, "SPi: $(sum(lambda_hat))")
         println(io, master)
-        
+
         println(io, "backup:")
         println(io, backup)
 
