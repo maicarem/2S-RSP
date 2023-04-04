@@ -41,6 +41,7 @@ function main_program()
         x_hat = _transform_matrix(x_hat_1)
         
         status = callback_node_status(cb_data, master)
+        _list_hub = [i for i in 1:n if y_hat[i] == 1]
         
         if status == MOI.CALLBACK_NODE_STATUS_INTEGER
             # Check subtour in a tour, if yes -> add benders cut, if no add subtour elimination
@@ -52,7 +53,7 @@ function main_program()
                 
                 lower_bound = sum(ring_cost[i,j]*x_hat[i,j] for (i,j) in E)+ sum(opening_cost[i]*y_hat[i] for i in V)+ lambda_0_hat + sum(lambda_hat[i] for i in V)
                 
-                (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, ring_cost, star_cost)
+                (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, ring_cost, ring_cost, star_cost)
                 
                 obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
                 obj_spi = cal_obj_spi(φ, γ, y_hat)
@@ -72,8 +73,14 @@ function main_program()
                     if !(lambda_0_hat >= sum((x_hat_1[minmax(k,i)]+2*x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
                         con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in K_tilt))
                         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                        
+                        distance = _find_lower_bound_backup(_list_hub, ring_cost)
+                        con2 = @build_constraint(lambda_0 >= sum(y[i]*distance[i] for i in _list_hub)) 
+                        MOI.submit(master, MOI.LazyConstraint(cb_data), con2)
+
                         open("debug000.txt", "a") do io
                             println(io, "Cut SP0: $(con)")
+                            println(io, "Cut SP0, function y[i]: $(con2)")
                         end
                     end
                 
@@ -99,7 +106,6 @@ function main_program()
                         println(io, "Subtour: $(each_cycle)")
                     end
                 end
-                _list_hub = [i for i in 1:n if y_hat[i] == 1]
                 # add subtour elimination
                 for each_cycle in all_cycles
                     con = @build_constraint(length(each_cycle) - 1/(length(_list_hub)- length(each_cycle))*sum(y[i] for i in _list_hub if i ∉ each_cycle)>= 

@@ -88,7 +88,8 @@ function _transformation_cost()
         end
     end
     # Check again the instance transformation for the backup cost, now revert to unchanged
-    return offset, opening_cost, rc, star_cost, rc
+    return offset, opening_cost, ring_cost, star_cost, backup_cost
+    # return offset, opening_cost, rc, star_cost, rc # <- this one is unchanged
 end
 
 opening_cost, ring_cost, star_cost = oc, rc, sc

@@ -1,0 +1,58 @@
+BBC_Classic
+=====================
+Route: [1, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 172 x[2,3] - 124 x[3,7] - 118 x[7,9] - 96 x[1,2] - 70 x[1,9], MathOptInterface.GreaterThan{Float64}(-322.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[4] + 82 y[4,4], MathOptInterface.GreaterThan{Float64}(82.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[5] + 15 y[5,5] + 2 y[10,10], MathOptInterface.GreaterThan{Float64}(15.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[6] + 77 y[6,6], MathOptInterface.GreaterThan{Float64}(77.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[8] + 47 y[8,8], MathOptInterface.GreaterThan{Float64}(47.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[10] + 15 y[10,10] + 2 y[5,5], MathOptInterface.GreaterThan{Float64}(15.0))
+=====================
+Route: [1, 8, 10, 4, 5, 6, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 166 x[1,9] - 310 x[7,9] - 394 x[3,7] - 194 x[1,8] - 550 x[8,10] - 598 x[4,10] - 852 x[2,6] - 780 x[5,6] - 612 x[4,5] - 692 x[2,3], MathOptInterface.GreaterThan{Float64}(-3546.0))
+=====================
+Route: [1, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 172 x[2,3] - 124 x[3,7] - 118 x[7,9] - 96 x[1,2] - 70 x[1,9], MathOptInterface.GreaterThan{Float64}(-322.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[4] + 82 y[4,4], MathOptInterface.GreaterThan{Float64}(82.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[5] + 15 y[5,5] + 2 y[10,10], MathOptInterface.GreaterThan{Float64}(15.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[6] + 77 y[6,6], MathOptInterface.GreaterThan{Float64}(77.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[8] + 47 y[8,8], MathOptInterface.GreaterThan{Float64}(47.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[10] + 15 y[10,10] + 2 y[5,5], MathOptInterface.GreaterThan{Float64}(15.0))
+=====================
+Route: [1, 8, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 210 x[1,8] - 396 x[2,8] - 322 x[2,3] - 184 x[3,7] - 118 x[7,9] - 70 x[1,9], MathOptInterface.GreaterThan{Float64}(-838.0))
+=====================
+Route: [1, 9, 7, 3, 2, 5, 10, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 144 x[1,10] - 504 x[5,10] - 680 x[2,5] - 166 x[1,9] - 310 x[7,9] - 316 x[3,7] - 492 x[2,3], MathOptInterface.GreaterThan{Float64}(-1754.0))
+=====================
+Route: [1, 9, 7, 3, 2, 8, 10, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 208 x[1,10] - 568 x[8,10] - 560 x[2,8] - 166 x[1,9] - 310 x[7,9] - 280 x[3,7] - 336 x[2,3], MathOptInterface.GreaterThan{Float64}(-1626.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[5] + 15 y[5,5], MathOptInterface.GreaterThan{Float64}(15.0))
+=====================
+Route: [1, 9, 7, 3, 2, 8, 5, 10, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 166 x[1,9] - 310 x[7,9] - 280 x[3,7] - 124 x[1,10] - 452 x[5,10] - 718 x[5,8] - 340 x[2,3] - 594 x[2,8], MathOptInterface.GreaterThan{Float64}(-2024.0))
+=====================
+Route: [1, 9, 7, 3, 2, 8, 4, 6, 5, 10, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 166 x[1,9] - 310 x[7,9] - 280 x[3,7] - 184 x[1,10] - 626 x[5,10] - 862 x[5,6] - 674 x[2,8] - 898 x[4,8] - 848 x[4,6] - 340 x[2,3], MathOptInterface.GreaterThan{Float64}(-3510.0))
+=====================
+Route: [1, 5, 10, 4, 8, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 166 x[1,9] - 310 x[7,9] - 280 x[3,7] - 194 x[1,5] - 622 x[5,10] - 766 x[4,10] - 340 x[2,3] - 610 x[2,8] - 744 x[4,8], MathOptInterface.GreaterThan{Float64}(-2722.0))
+=====================
+Route: [1, 5, 4, 8, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 166 x[1,9] - 310 x[7,9] - 280 x[3,7] - 258 x[1,5] - 596 x[4,5] - 748 x[4,8] - 614 x[2,8] - 340 x[2,3], MathOptInterface.GreaterThan{Float64}(-2192.0))
+Cut SPi: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda[10] + 15 y[10,10], MathOptInterface.GreaterThan{Float64}(15.0))
+=====================
+Route: [1, 5, 10, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 144 x[1,5] - 512 x[5,10] - 684 x[2,10] - 166 x[1,9] - 310 x[7,9] - 312 x[3,7] - 484 x[2,3], MathOptInterface.GreaterThan{Float64}(-1754.0))
+=====================
+Route: [1, 9, 7, 3, 2, 10, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 210 x[1,10] - 508 x[2,10] - 466 x[2,3] - 216 x[3,7] - 118 x[7,9] - 70 x[1,9], MathOptInterface.GreaterThan{Float64}(-1014.0))
+=====================
+Route: [1, 8, 5, 10, 6, 4, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 166 x[1,9] - 310 x[7,9] - 368 x[3,7] - 60 x[1,8] - 312 x[5,8] - 672 x[5,10] - 640 x[2,3] - 906 x[2,4] - 942 x[4,6] - 872 x[6,10], MathOptInterface.GreaterThan{Float64}(-3504.0))
+=====================
+Route: [1, 5, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 210 x[1,5] - 516 x[2,5] - 478 x[2,3] - 220 x[3,7] - 118 x[7,9] - 70 x[1,9], MathOptInterface.GreaterThan{Float64}(-1030.0))
+=====================
+Route: [1, 8, 4, 2, 3, 7, 9, 1]
+Cut SP0: ScalarConstraint{AffExpr, MathOptInterface.GreaterThan{Float64}}(lambda_0 - 278 x[1,8] - 498 x[4,8] - 512 x[2,4] - 166 x[1,9] - 310 x[7,9] - 368 x[3,7] - 516 x[2,3], MathOptInterface.GreaterThan{Float64}(-1744.0))

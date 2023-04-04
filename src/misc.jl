@@ -64,57 +64,57 @@ function _list_hub(_y_hat)
    return hub, hub_tilt 
 end
 
-function contain_subtour(x_hat, y_hat)
+# function contain_subtour(x_hat, y_hat)
 
-    visited = zeros(Int, n)
-    parent = zeros(Int, n)
-    vistime = zeros(Int, n)
-    adjacent_list = Dict()
+#     visited = zeros(Int, n)
+#     parent = zeros(Int, n)
+#     vistime = zeros(Int, n)
+#     adjacent_list = Dict()
     
-    timer = 0
-    cycle_count = 0
+#     timer = 0
+#     cycle_count = 0
 
-    for i in 1:n
-        if y_hat[i] == 1
-            adjacent_list[i] = []
-            for j in 1:n
-                if x_hat[i,j] == 1
-                    append!(adjacent_list[i], j)
-                end
-            end
-        else
-            visited[i] = 1
-        end
-    end
+#     for i in 1:n
+#         if y_hat[i] == 1
+#             adjacent_list[i] = []
+#             for j in 1:n
+#                 if x_hat[i,j] == 1
+#                     append!(adjacent_list[i], j)
+#                 end
+#             end
+#         else
+#             visited[i] = 1
+#         end
+#     end
     
-    visited[1] = 1
+#     visited[1] = 1
 
-    function dfs(node)
+#     function dfs(node)
         
-        for next in adjacent_list[node]
-            if visited[next] == 0
-                visited[next] = 1
-                timer +=1
-                vistime[next] = timer
-                parent[next] = node
-                dfs(next)
-            elseif visited[next] == 1 && parent[node] == next
-                continue
-            elseif visited[next] == 1 && parent[node] != next && vistime[next]< timer
-                cycle_count +=1
-                continue
-            end
-        end
-    end
-    dfs(1)
+#         for next in adjacent_list[node]
+#             if visited[next] == 0
+#                 visited[next] = 1
+#                 timer +=1
+#                 vistime[next] = timer
+#                 parent[next] = node
+#                 dfs(next)
+#             elseif visited[next] == 1 && parent[node] == next
+#                 continue
+#             elseif visited[next] == 1 && parent[node] != next && vistime[next]< timer
+#                 cycle_count +=1
+#                 continue
+#             end
+#         end
+#     end
+#     dfs(1)
 
-    if sum(visited) != length(visited)
-        return false
-    else
-        return cycle_count == 1
-    end
+#     if sum(visited) != length(visited)
+#         return false
+#     else
+#         return cycle_count == 1
+#     end
     
-end
+# end
 
 function cal_obj_sp0(alpha, beta, x_hat)
     if length(V_tilt) == 1
@@ -209,4 +209,13 @@ function find_cycle(x_hat, y_hat)
     end
     return all_cycles
 
+end
+
+function _find_lower_bound_backup(list_hub, edge_matrix)
+    distance = zeros(Float64, n)
+    for i in list_hub
+        i ∈ V_tilt || continue
+        distance[i] = minimum(edge_matrix[i, [j for j in list_hub if j!=i]])
+    end
+    return distance
 end
