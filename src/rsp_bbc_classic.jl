@@ -69,7 +69,7 @@ function main_program()
                 gap = (upper_bound - lower_bound)/upper_bound
                 if gap > 1e-10
                     
-                    open("debug000.txt", "a") do io
+                    open("cut_bbc_classic.txt", "a") do io
                         println(io, "=====================")
                         println(io, "Route: $(transform_route(x_hat))")
                     end
@@ -80,13 +80,13 @@ function main_program()
                         con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
                         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
                         
-                        distance = _find_lower_bound_backup(_list_hub, ring_cost)
-                        con2 = @build_constraint(lambda_0 >= sum(y[i]*distance[i] for i in _list_hub)) 
-                        MOI.submit(master, MOI.LazyConstraint(cb_data), con2)
+                        # distance = _find_lower_bound_backup(_list_hub, ring_cost)
+                        # con2 = @build_constraint(lambda_0 >= sum(y[i]*distance[i] for i in _list_hub)) 
+                        # MOI.submit(master, MOI.LazyConstraint(cb_data), con2)
 
-                        open("debug000.txt", "a") do io
+                        open("cut_bbc_classic.txt", "a") do io
                             println(io, "Cut SP0: $(con)")
-                            println(io, "Cut SP0, function y[i]: $(con2)")
+                            # println(io, "Cut SP0, function y[i]: $(con2)")
                         end
                     end
                 
@@ -98,7 +98,7 @@ function main_program()
                             con = @build_constraint(lambda[i] >= 3(1-y[i])*φ[i] - sum(y[j]*γ[i,j] for j in V if j!=i))
                             MOI.submit(master, MOI.LazyConstraint(cb_data), con)
                             
-                            open("debug000.txt", "a") do io
+                            open("cut_bbc_classic.txt", "a") do io
                                 println(io, "Cut SPi: $(con)")
                             end
 
@@ -106,7 +106,7 @@ function main_program()
                     end
                 end
             else
-                open("debug000.txt", "a") do io
+                open("cut_bbc_classic.txt", "a") do io
                     println(io, "=================")
                     for each_cycle in all_cycles
                         println(io, "Subtour: $(each_cycle)")
@@ -117,7 +117,7 @@ function main_program()
                     con = @build_constraint(length(each_cycle) - 1/(length(_list_hub)- length(each_cycle))*sum(y[i] for i in _list_hub if i ∉ each_cycle)>= 
                     sum(x[minmax(each_cycle[i], each_cycle[i+1])] for i in eachindex(each_cycle[1:end-1]))+ x[minmax(each_cycle[1], each_cycle[end])])
                     MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                    open("debug000.txt", "a") do io
+                    open("cut_bbc_classic.txt", "a") do io
                         println(io, "Subtour: $(con)")
                     end
                 end
@@ -128,7 +128,7 @@ function main_program()
                 #         con = @build_constraint(length(S) - 1/(length(_list_hub)- length(S))*sum(y[i] for i in _list_hub if i ∉ S)>= 
                 #                                 sum(x[i,j] for i in S for j in S if i<j))
                 #         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                #         open("debug000.txt", "a") do io
+                #         open("cut_bbc_classic.txt", "a") do io
                 #             println(io, "Subtour: $(con)")
                 #         end
                 #     end
@@ -137,14 +137,14 @@ function main_program()
         end
     end
 
-    open("debug000.txt","w") do io
+    open("cut_bbc_classic.txt","w") do io
         println(io, "BBC_Classic")
     end
 
     set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
     optimize!(master)
     
-    open("debug.txt","w") do io
+    open("log_file_BBC_classic.txt","w") do io
         x_hat = value.(x)
         x_hat = _transform_matrix(x_hat)
         

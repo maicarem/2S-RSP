@@ -2684,4 +2684,4 @@ Subject to
 Model Attribute
 ObjVal--> 838.0
 Gap--> 0.0
-Run time--> 2.1601288318634033
+Run time--> 2.379894971847534
