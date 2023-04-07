@@ -2,6 +2,7 @@ using JuMP, Gurobi
 using Combinatorics
 import GLPK
 import MathOptInterface as MOI
+import Dates
 
 include("dat.jl")
 include("dual_solution.jl")
@@ -12,7 +13,13 @@ include("misc.jl")
 V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 0)
 opening_cost, ring_cost, star_cost = oc, rc, sc
 # offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
-
+add_SP0 = true 
+name1 = "cut_bbc_classic"
+name2 = "log_file_BBC_classic"
+if add_SP0
+    name1 = "cut_bbc_classic_SP0y"
+    name2 = "log_file_BBC_classic_SP0y"
+end
 ############# MASTER PROBLEM ########################################
 
 master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
@@ -31,12 +38,6 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
 @constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
 @constraint(master, [(i,j) in T_tilt], sigma >= y[i] + y[j])
 @constraint(master, y[1] == 1)
-
-# @constraint(master, x[1,2] == 1)
-# @constraint(master, x[1,9] == 1)
-# @constraint(master, x[7,9] == 1)
-# @constraint(master, x[2,3] == 1)
-# @constraint(master, x[3,7] == 1)
 
 function main_program()
 
@@ -69,25 +70,28 @@ function main_program()
                 gap = (upper_bound - lower_bound)/upper_bound
                 if gap > 1e-10
                     
-                    open("cut_bbc_classic.txt", "a") do io
-                        println(io, "=====================")
+                    open("$(name1).txt", "a") do io
+                        println(io, "=======BENDERS CUTS==============")
                         println(io, "Route: $(transform_route(x_hat))")
                     end
 
                     # add cut SP0
                     
-                    if !(lambda_0_hat >= sum((x_hat_1[minmax(k,i)]+2*x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
-                        con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
+                    if !(lambda_0_hat >= sum((x_hat_1[minmax(k,i)] + x_hat_1[minmax(i,j)]+ x_hat_1[minmax(j,t)]-2)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x_hat_1[minmax(i,j)]+x_hat_1[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
+                        con = @build_constraint(lambda_0 >= sum((x[minmax(k,i)]+x[minmax(i,j)]+x[minmax(j,t)]-2)*alpha[i,j,k,t] for (i,j,k,t) in find_index(alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*beta[i,j,k] for (i,j,k) in find_index(beta)))
                         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                        write_to_log("$(name1).txt", "Cut SP0(x)", con)
                         
-                        # distance = _find_lower_bound_backup(_list_hub, ring_cost)
-                        # con2 = @build_constraint(lambda_0 >= sum(y[i]*distance[i] for i in _list_hub)) 
-                        # MOI.submit(master, MOI.LazyConstraint(cb_data), con2)
-
-                        open("cut_bbc_classic.txt", "a") do io
-                            println(io, "Cut SP0: $(con)")
-                            # println(io, "Cut SP0, function y[i]: $(con2)")
+                        if add_SP0
+                            distance = _find_lower_bound_backup(_list_hub, ring_cost)
+                            if !(lambda_0_hat >= sum(y_hat[i]*distance[i] for i in _list_hub))
+                                con2 = @build_constraint(lambda_0 >= sum(y[i]*distance[i] for i in _list_hub)) 
+                                MOI.submit(master, MOI.LazyConstraint(cb_data), con2)
+                                write_to_log("$(name1).txt", "Cut SP0(y[i])", con2)
+                            end
                         end
+                        
+                        
                     end
                 
                     # add cut SP_i
@@ -96,18 +100,17 @@ function main_program()
                         
                         if !(lambda_hat[i] >= 3(1-y_hat[i])*φ[i] - sum(y_hat[j]*γ[i,j] for j in V if j!=i))
                             con = @build_constraint(lambda[i] >= 3(1-y[i])*φ[i] - sum(y[j]*γ[i,j] for j in V if j!=i))
-                            MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                            MOI.submit(master, MOI.LazyConstraint(cb_data), con)                            
                             
-                            open("cut_bbc_classic.txt", "a") do io
-                                println(io, "Cut SPi: $(con)")
-                            end
+                            write_to_log("$(name1).txt", "Cut SPi", con)
 
                         end
                     end
                 end
             else
-                open("cut_bbc_classic.txt", "a") do io
-                    println(io, "=================")
+                
+                open("$(name1).txt", "a") do io
+                    println(io, "=======SUBTOUR==========")
                     for each_cycle in all_cycles
                         println(io, "Subtour: $(each_cycle)")
                     end
@@ -117,47 +120,38 @@ function main_program()
                     con = @build_constraint(length(each_cycle) - 1/(length(_list_hub)- length(each_cycle))*sum(y[i] for i in _list_hub if i ∉ each_cycle)>= 
                     sum(x[minmax(each_cycle[i], each_cycle[i+1])] for i in eachindex(each_cycle[1:end-1]))+ x[minmax(each_cycle[1], each_cycle[end])])
                     MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                    open("cut_bbc_classic.txt", "a") do io
-                        println(io, "Subtour: $(con)")
-                    end
+    
+                    write_to_log("$(name1).txt", "Subtour = ", con)
                 end
                 
-                # # @info "Subtour detected: $(transform_route(x_hat))"
-                # for k in 1:ceil(Int,length(_list_hub)/2)
-                #     for S in combinations(_list_hub, k)
-                #         con = @build_constraint(length(S) - 1/(length(_list_hub)- length(S))*sum(y[i] for i in _list_hub if i ∉ S)>= 
-                #                                 sum(x[i,j] for i in S for j in S if i<j))
-                #         MOI.submit(master, MOI.LazyConstraint(cb_data), con)
-                #         open("cut_bbc_classic.txt", "a") do io
-                #             println(io, "Subtour: $(con)")
-                #         end
-                #     end
-                # end
             end
         end
     end
 
-    open("cut_bbc_classic.txt","w") do io
+    open("$(name1).txt","w") do io
         println(io, "BBC_Classic")
     end
 
     set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
     optimize!(master)
     
-    open("log_file_BBC_classic.txt","w") do io
-        x_hat = value.(x)
-        x_hat = _transform_matrix(x_hat)
-        
-        lambda_0_hat = value(lambda_0)
-        lambda_hat = value.(lambda)
-        println(io, "Route: $(transform_route(x_hat))")
-        println(io, "SP0: $(lambda_0_hat)")
-        println(io, "SPi: $(sum(lambda_hat))")
+    x_hat = value.(x)
+    x_hat = _transform_matrix(x_hat)
+    lambda_0_hat = value(lambda_0)
+    lambda_hat = value.(lambda)
+    
+    open("$(name2).txt","w") do io
+        println(io, "Obj = $(objective_value(master))")
+        println(io, "Running time = $(solve_time(master))")
+        println(io, "Gap = $(relative_gap(master))")
+        println(io, "Route =  $(transform_route(x_hat))")
+        println(io, "lambda SP0 =  $(lambda_0_hat)")
+        println(io, "lambda SPi =  $(sum(lambda_hat))")
         println(io, master)
-        
+        println(io, "===================")
+        println(io, solution_summary(master))
     end
     
-    # @show solution_summary(master)
 end
 
 main_program()
