@@ -164,7 +164,7 @@ function _find_lower_bound_backup(list_hub, edge_matrix)
     distance = zeros(Float64, n)
     for i in list_hub
         i ∈ V_tilt || continue
-        distance[i] = minimum(edge_matrix[i, [j for j in list_hub if j!=i]])
+        distance[i] = minimum(edge_matrix[[j for j in list_hub if j!=i], [j for j in list_hub if j!=i]])
     end
     return distance
 end
