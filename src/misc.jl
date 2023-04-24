@@ -178,3 +178,27 @@ function write_to_log(name, text, con)
         println(io, "$(text): $(con)")
     end
 end
+
+function _add_cut_SP0(master, _alpha,_beta,_lambda_0, _x_hat)
+    if !(_lambda_0 >= sum((_x_hat[minmax(k,i)]+2*_x_hat[minmax(i,j)]+_x_hat[minmax(j,t)]-3)*_alpha[i,j,k,t] for (i,j,k,t) in find_index(_alpha))+ sum((_x_hat[minmax(i,j)]+_x_hat[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in find_index(_beta)))
+        cut = @constraint(master, lambda_0 >= sum((x[minmax(k,i)]+x[minmax(i,j)]+x[minmax(j,t)]-2)*_alpha[i,j,k,t] for (i,j,k,t) in find_index(_alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in find_index(_beta)))
+        @info "Adding the cut $(cut)"
+    end
+end
+
+function _add_cut_SPi(master, _varphi, _gamma, indice, _lambda, _y_hat)
+    if !(_lambda[indice] >= 3(1-_y_hat[indice])*_varphi[indice] - sum(_y_hat[j]*_gamma[indice,j] for j in V if j!=indice))
+        cut = @constraint(master, lambda[indice] >= 3(1-y[indice])*_varphi[indice] - sum(y[j]*_gamma[indice,j] for j in V if j!=indice))
+        @info "Adding the cut $(cut)"
+    end
+end
+
+function calculate_eta(_matrix)
+    k = count(i->(i != 0), _matrix)
+    if k == 0
+        return 0
+    else
+        return sum(_matrix)*(1/k)
+    end
+end
+    
