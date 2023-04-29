@@ -1,29 +1,24 @@
 using JuMP, Gurobi
 using Combinatorics
+using Graphs, GraphsFlows
+
 
 include("dat.jl")
 include("dual_solution.jl")
 include("misc.jl")
+include("mutable_structure.jl")
+include("user_cut.jl")
 
-# Add cut constraint
-function _add_cut_SP0(_alpha,_beta,_lambda_0, _x_hat)
-    if !(_lambda_0 >= sum((_x_hat[minmax(k,i)]+2*_x_hat[minmax(i,j)]+_x_hat[minmax(j,t)]-3)*_alpha[i,j,k,t] for (i,j,k,t) in J_tilt)+ sum((_x_hat[minmax(i,j)]+_x_hat[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in K_tilt))
-        cut = @constraint(master, lambda_0 >= sum((x[minmax(k,i)]+2*x[minmax(i,j)]+x[minmax(j,t)]-3)*_alpha[i,j,k,t]
-                            for (i,j,k,t) in J_tilt)+ sum((x[minmax(i,j)]+x[minmax(j,k)]-1)*_beta[i,j,k] for (i,j,k) in K_tilt))
-        @info "Adding the cut $(cut)"
-    end
-end
 
-function _add_cut_SPi(_varphi, _gamma, indice, _lambda, _y_hat)
-    if !(_lambda[indice] >= 3(1-_y_hat[indice])*_varphi[indice] - sum(_y_hat[j]*_gamma[indice,j] for j in V if j!=indice))
-        cut = @constraint(master, lambda[indice] >= 3(1-y[indice])*_varphi[indice] - sum(y[j]*_gamma[indice,j] for j in V if j!=indice))
-        @info "Adding the cut $(cut)"
-    end
-end
+V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 0)
+opening_cost, ring_cost, star_cost = oc, rc, sc
+pars = MainPar(uc_strat = 2)
+benders_enabled = true
 
 ############# MASTER PROBLEM ########################################
 
 master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
+
 # Decision variables
 @variable(master, x[i in V, j in V; i<j], Bin)
 @variable(master, y[i in V], Bin)
@@ -73,6 +68,8 @@ function main_program()
         end
 
         set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
+        set_attribute(master, MOI.UserCutCallback(), call_back_user_cuts_benders)
+        
         optimize!(master)
         lower_bound = objective_value(master)
         println("Objective value at iteration $(iter0) is $(lower_bound)")
@@ -80,7 +77,7 @@ function main_program()
         x_hat = _transform_matrix(x_hat_1)
         lambda_0_hat, lambda_hat = value(lambda_0), round.(value.(lambda))
 
-        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, ring_cost, star_cost)
+        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, ring_cost, ring_cost, star_cost)
         # Objective value, and add cut
         
         obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
@@ -114,10 +111,10 @@ function main_program()
             break
         end
 
-        _add_cut_SP0(alpha,beta, lambda_0_hat, x_hat_1)
+        _add_cut_SP0(master, alpha,beta, lambda_0_hat, x_hat_1)
         for i in 1:n
             y_hat[i] == 0 && φ[i]!= 0|| continue
-            _add_cut_SPi(φ, γ, i, lambda_hat, y_hat)
+            _add_cut_SPi(master, φ, γ, i, lambda_hat, y_hat)
         end
     end
 end
