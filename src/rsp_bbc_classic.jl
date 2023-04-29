@@ -1,5 +1,7 @@
 using JuMP, Gurobi
 using Combinatorics
+using Graphs, GraphsFlows
+
 import GLPK
 import MathOptInterface as MOI
 import Dates
@@ -8,12 +10,16 @@ include("dat.jl")
 include("dual_solution.jl")
 include("write_output.jl")
 include("misc.jl")
+include("mutable_structure.jl")
+include("user_cut.jl")
 
 # Initialize Sets
 V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 0)
 opening_cost, ring_cost, star_cost = oc, rc, sc
-# offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
-add_SP0 = true 
+pars = MainPar(uc_strat = 2)
+benders_enabled = true
+
+add_SP0 = false 
 name1 = "cut_bbc_classic"
 name2 = "log_file_BBC_classic"
 if add_SP0
@@ -133,6 +139,7 @@ function main_program()
     end
 
     set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
+    set_attribute(master, MOI.UserCutCallback(), call_back_user_cuts_benders)
     optimize!(master)
     
     x_hat = value.(x)
