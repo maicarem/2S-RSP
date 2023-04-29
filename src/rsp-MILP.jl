@@ -1,15 +1,19 @@
 using JuMP, Gurobi
 using Combinatorics
+using Graphs, GraphsFlows
 
 include("dat.jl")
 include("misc.jl")
 include("write_output.jl")
+include("mutable_structure.jl")
+include("user_cut.jl")
 
 # Initialize Sets
 V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 1)
 opening_cost, ring_cost, star_cost = oc, rc, sc
 offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
-
+pars = MainPar(uc_strat = 3)
+benders_enabled = false
 
 main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 # Decision variables
@@ -31,8 +35,6 @@ main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 @constraint(main, [(i,j,k) in K_tilt], x[minmax(i,j)] + x[minmax(j,k)] <= 1+x_prime[minmax(i,k)])
 
 @constraint(main, [(i,j) in A], y[i,j] <= y[j,j])
-@constraint(main, y[1,1] == 1)
-
 function my_callback_benders_cut(cb_data)
     
     x_hat = Bool.(round.(callback_value.(cb_data, x)))
@@ -65,10 +67,36 @@ function my_callback_benders_cut(cb_data)
         end
     end
 end
-
+nconnectivity_cuts = 0
 set_attribute(main, MOI.LazyConstraintCallback(), my_callback_benders_cut)
+set_attribute(main, MOI.UserCutCallback(), call_back_user_cuts)
+    
 optimize!(main)
 _write_gurobi_log("instance", main, "Original")
+x_hat = value.(x)
+x_hat_prime = value.(x_prime)
+
+
+# open("counter_example_original.txt", "w") do io
+#     for i in V
+#         for j in V
+#             if i<j && x_hat[i,j] == 1
+#                 println(io, "r[$(i), $(j)] = $(ring_cost[i,j])")
+#                 println(io, "ring_after[$(i), $(j)] = $(rc[i,j])")
+                
+#             end
+#         end
+#     end
+#     println(io, "offset = $(offset)")
+#     for i in V
+#         for j in V
+#             if i<j && x_hat_prime[i,j] == 1
+#                 println(io, "r'[$(i), $(j)] = $(ring_cost[i,j])")
+#                 println(io, "r''[$(i), $(j)] = $(backup[i,j])")
+#             end
+#         end
+#     end
+# end
 @show value.(x)
 @show value.(y);
 @show value.(x_prime[1,2]);
