@@ -193,12 +193,4 @@ function _add_cut_SPi(master, _varphi, _gamma, indice, _lambda, _y_hat)
     end
 end
 
-function calculate_eta(_matrix)
-    k = count(i->(i != 0), _matrix)
-    if k == 0
-        return 0
-    else
-        return sum(_matrix)*(1/k)
-    end
-end
     
