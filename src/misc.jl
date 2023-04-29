@@ -192,5 +192,3 @@ function _add_cut_SPi(master, _varphi, _gamma, indice, _lambda, _y_hat)
         @info "Adding the cut $(cut)"
     end
 end
-
-    

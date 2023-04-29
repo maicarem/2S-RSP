@@ -35,6 +35,8 @@ main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 @constraint(main, [(i,j,k) in K_tilt], x[minmax(i,j)] + x[minmax(j,k)] <= 1+x_prime[minmax(i,k)])
 
 @constraint(main, [(i,j) in A], y[i,j] <= y[j,j])
+@constraint(main, y[1,1] == 1)
+
 function my_callback_benders_cut(cb_data)
     
     x_hat = Bool.(round.(callback_value.(cb_data, x)))
@@ -98,5 +100,4 @@ x_hat_prime = value.(x_prime)
 #     end
 # end
 @show value.(x)
-@show value.(y);
-@show value.(x_prime[1,2]);
+@show value.(y)
