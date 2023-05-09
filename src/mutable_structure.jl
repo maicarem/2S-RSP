@@ -10,5 +10,8 @@ using Parameters
     uc_tolerance::Float64 = 0.01
     time_limit::Int = 3600
     @assert time_limit >= 0 # time_limit = 0 means infinity
-    nthreads::Int = 4 # number of threads used in JuMP
+    transformation::Bool = true
+    benders::Bool = false
+    uc::Bool = false
+    alpha::Int = 3
 end

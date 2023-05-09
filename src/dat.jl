@@ -1,8 +1,38 @@
-include("read_input.jl")
-n, oc, sc, rc = read_input("instances/small_instances/small_instance_10.dat")
+using LinearAlgebra
+using DelimitedFiles
+
+function read_input_random(filepath, alpha)
+    
+    f = open(filepath, "r")
+    _n,_,_ = [parse(Float64, i) for i in split(readline(f)," ")]
+    _n = Int(_n)
+
+    coor = zeros(_n,2)
+    dist = ones(_n,_n) * 1e18
+    for i in 1:_n
+        _, coor[i,1], coor[i,2] = [parse(Float64, i) for i in split(readline(f)," ")]
+    end
+
+    # calculate star cost
+    for i in 1:_n
+        for j in 1:_n
+            i<j || continue
+            dist[i,j] = round(norm([coor[i,1] - coor[j,1], coor[i,2] - coor[j,2]], 2))
+            dist[j,i] = dist[i,j]
+        end
+    end
+    # star_cost = ceil.(Int, dist * alpha)
+    # ring_cost = ceil.(Int, (10-alpha)*dist)
+    star_cost = dist
+    ring_cost = dist * 2
+    readline(f)
+    opening_cost= [parse(Float64, i) for i in split(readline(f)," ")]
+    close(f)
+    return _n, opening_cost, star_cost, ring_cost # number of nodes, opening cost, star cost, ring cost
+end
 
 # Declare sets
-function _declare_set(n, enabled)
+function _declare_set(n, pars)
     V = 1:n
     V_tilt = 2:n
     V_certain = [i for i in V if i ∉ V_tilt]
@@ -10,14 +40,13 @@ function _declare_set(n, enabled)
     A_prime = [(i,j) for i in V for j in V]
     E = [(i,j) for i in V for j in V if i<j]
     T_tilt = [(i,j) for i in V_tilt for j in V_tilt if i<j]
-    if enabled == 1
-        J_tilt = [(i,j,k,t) for k in V for t in V for i in V_tilt for j in V_tilt if k<t && i!=j && i!=k && i!=t && j!=k && j!=t]
-        K_tilt = [(i,j,k) for k in V for i in V for j in V_tilt if i<k && i!=j && j!=k]
-    else
+    if pars.benders
         J_tilt = []
         K_tilt = []
+    else
+        J_tilt = [(i,j,k,t) for k in V for t in V for i in V_tilt for j in V_tilt if k<t && i!=j && i!=k && i!=t && j!=k && j!=t]
+        K_tilt = [(i,j,k) for k in V for i in V for j in V_tilt if i<k && i!=j && j!=k]
     end
-    
     return V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt
 end
 
@@ -99,3 +128,29 @@ end
 # V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 1)
 # opening_cost, ring_cost, star_cost = oc, rc, sc
 # offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
+
+function read_input_journal(filepath, alpha)
+    
+    coor = readdlm(filepath)[7:end-1, 2:3]
+    n = size(coor)[1]
+    dist = ones(n,n) * 1e18
+    
+    for i in 1:n
+        for j in 1:n
+            i<j || continue
+            dist[i,j] = round(norm([coor[i,1] - coor[j,1], coor[i,2] - coor[j,2]], 2))
+            dist[j,i] = dist[i,j]
+        end
+    end
+
+    star_cost = ceil.(Int, dist * alpha)
+    ring_cost = ceil.(Int, (10-alpha)*dist)
+    opening_cost = zeros(Int, n)
+    return n, opening_cost, star_cost, ring_cost # number of nodes, opening cost, star cost, ring cost
+end
+
+# filepath = "instances/small_instances/Instances_journal_article/EUC_2D/berlin52.tsp"
+# filepath = "instances/small_instances/Instances_journal_article/EUC_2D/bier127.tsp"
+
+# @show read_input_journal(filepath, 7)
+
