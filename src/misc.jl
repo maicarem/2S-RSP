@@ -200,7 +200,6 @@ function _add_cut_SP0_test(master, _alpha,_beta,_lambda_01, _lambda_02, _x_hat)
     end
 
     if !(_lambda_02 >= sum((_x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + _x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+_x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
-        println("HERE!!!!!")
         cut = @constraint(master, lambda_02 >= sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
         @info "Adding the cut lambda_02 $(cut)"
     end

@@ -9,9 +9,9 @@ include("mutable_structure.jl")
 include("user_cut.jl")
 
 # Initialize Sets
-pars = MainPar(uc_strat = 3, transformation = false, alpha = 3)
-name = "instances/small_instances/Instances_journal_article/journal/berlin52.tsp"
-n, oc, sc, rc = read_input_journal(name, 7)
+pars = MainPar(uc_strat = 3, transformation = true, alpha = 3)
+name = "instances/small_instances/small_instance_10.dat"
+n, oc, sc, rc = read_input_random(name, pars)
 V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, pars)
 opening_cost, ring_cost, star_cost = oc, rc, sc
 if pars.transformation
