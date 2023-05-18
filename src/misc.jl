@@ -86,9 +86,9 @@ function cal_obj_spi(varphi, gamma, y_hat)
     # return 3*sum(varphi[i] for i in 1:n if y_hat[i,i] == 0)
 end
 
-function minmax(i,j)
-    return min(i,j), max(i,j)
-end
+# function minmax(i,j)
+#     return min(i,j), max(i,j)
+# end
 
 function _transform_matrix(x)
     x_hat = zeros(Bool, n,n)
@@ -193,6 +193,19 @@ function _add_cut_SPi(master, _varphi, _gamma, indice, _lambda, _y_hat)
     end
 end
 
+function _add_cut_SP0_test(master, _alpha,_beta,_lambda_01, _lambda_02, _x_hat)
+    if !(_lambda_01 >= sum((_x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ _x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta)))
+        cut = @constraint(master, lambda_01 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta)))
+        @info "Adding the cut lambda_01 $(cut)"
+    end
+
+    if !(_lambda_02 >= sum((_x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + _x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+_x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
+        println("HERE!!!!!")
+        cut = @constraint(master, lambda_02 >= sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
+        @info "Adding the cut lambda_02 $(cut)"
+    end
+end
+
 # For ILP only
 function my_callback_subtour(cb_data)
     
@@ -224,5 +237,46 @@ function my_callback_subtour(cb_data)
                 end
             end
         end
+    end
+end
+
+# function _add_knapsack_inequalities(master, _alpha, _beta, _gamma, _varphi, x_hat, y_hat, global_upper_bound)
+#     con = @constraint(master, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V) + sum(lambda[i] for i in V) + sum((x[minmax(k,i)]+x[minmax(i,j)]+x[minmax(j,t)] - 2)*_alpha[i,j,k,t]
+#                         for (i,j,k,t) in find_index(_alpha))+ sum((x[minmax(i,j)]+x[minmax(j,k)] - 1)*_beta[i,j,k] for (i,j,k) in find_index(_beta)) + sum(3(1-y[indice])*_varphi[indice] - sum(y[j]*_gamma[indice,j] for j in V if j!=indice) for indice in V[2:end] if _varphi[indice]!= 0)
+#                         <= global_upper_bound)
+#     @info "Use global_upper_bound = $(global_upper_bound) \n Constraint: $(con)"
+# end
+
+function cal_obj_sp0(alpha, beta, x_hat)
+    K_tilt_1 = keys(beta)
+    J_tilt_1 = keys(alpha)
+    if length(V_tilt) == 1
+        return  sum((x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* beta[(val[1],val[2],val[3])] for val in K_tilt_1)
+    elseif length(V_tilt) == 0
+        return 0
+    else
+        return sum((x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * alpha[(val[1],val[2],val[3],val[4])] for val in J_tilt_1) + sum((x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* beta[(val[1],val[2],val[3])] for val in K_tilt_1)
+    end
+end
+# val[1],val[2],val[3],val[4] = i,j,k,t
+
+# function cal_obj_sp0(alpha, beta, x_hat)
+#     K_tilt_1 = find_index(beta)
+#     J_tilt_1 = find_index(alpha)
+#     if length(V_tilt) == 1
+#         return sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt_1)
+#     elseif length(V_tilt) == 0
+#         return 0
+#     else
+#         return sum((x_hat[k,i] + x_hat[i,j]+x_hat[j,t] - 2) * alpha[i,j,k,t] for (i,j,k,t) in J_tilt_1) + sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt_1)
+#     end
+# end
+
+
+# Add cut SP0 (no splitting)
+function _add_cut_SP0_combined(master, _alpha,_beta,_lambda, _x_hat)
+    if !(_lambda >= sum((_x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ _x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta))+ sum((_x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + _x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+_x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
+        cut = @constraint(master, lambda_0 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta)) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
+        @info "Adding the cut lambda_0 $(cut)"
     end
 end

@@ -10,15 +10,17 @@ include("mutable_structure.jl")
 include("user_cut.jl")
 
 
-V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, 0)
+pars = MainPar(uc_strat = 3, transformation = true, alpha = 3, benders = true)
+name = "instances/small_instances/small_instance_10.dat"
+n, oc, sc, rc = read_input_random(name, pars)
+V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, pars)
 opening_cost, ring_cost, star_cost = oc, rc, sc
-pars = MainPar(uc_strat = 2)
-benders_enabled = true
-
+if pars.transformation
+    offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
+end
 ############# MASTER PROBLEM ########################################
 
 master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
-
 # Decision variables
 @variable(master, x[i in V, j in V; i<j], Bin)
 @variable(master, y[i in V], Bin)
@@ -27,25 +29,23 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
 @variable(master, lambda[i in V]>=0)
 
 # Objective Function
-@objective(master, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
+if pars.transformation
+    @objective(master, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
+else
+    @objective(master, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
+end
 
 # Constraint
 @constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i])
-@constraint(master, sum(x[i,j] for (i,j) in E) >= 3+ sigma)
-@constraint(master, [(i,j) in T_tilt], sigma >= y[i] + y[j])
+@constraint(master, sum(x[i,j] for (i,j) in E) >= 6)
 @constraint(master, y[1] == 1)
 
-# @constraint(master, x[1,2] == 1)
-# @constraint(master, x[1,9] == 1)
-# @constraint(master, x[7,9] == 1)
-# @constraint(master, x[2,3] == 1)
-# @constraint(master, x[3,7] == 1)
-
 function main_program()
-    for iter0 in 1:1000
+    global_upper_bound = 1e18
+    for iter0 in 1:200
         println("===============Iteration ", iter0, "===============")
         
-        function my_callback_benders_cut(cb_data)
+        function my_callback_subtour(cb_data)
             
             x_hat = Bool.(round.(callback_value.(cb_data, x)))
             y_hat = Bool.(round.(callback_value.(cb_data, y)))
@@ -67,26 +67,38 @@ function main_program()
             end
         end
 
-        set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
-        set_attribute(master, MOI.UserCutCallback(), call_back_user_cuts_benders)
-        
+        set_attribute(master, MOI.LazyConstraintCallback(), my_callback_subtour)
+
         optimize!(master)
         lower_bound = objective_value(master)
         println("Objective value at iteration $(iter0) is $(lower_bound)")
         x_hat_1, y_hat = Bool.(round.(value.(x))), Bool.(round.(value.(y)))
         x_hat = _transform_matrix(x_hat_1)
         lambda_0_hat, lambda_hat = value(lambda_0), round.(value.(lambda))
-
-        (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, ring_cost, ring_cost, star_cost)
-        # Objective value, and add cut
         
+        if pars.transformation
+            (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, V_tilt, n, backup, ring_cost, star_cost)
+        else
+            (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, V_tilt, n, ring_cost, ring_cost, star_cost)
+        end
+        
+        # Objective value, and add cut
         obj_sp0 = cal_obj_sp0(alpha, beta, x_hat)
         obj_spi = cal_obj_spi(φ, γ, y_hat)
         
+        if pars.transformation
+            upper_bound = offset + sum(rc[i,j]*x_hat[i,j] for (i,j) in E)+ sum(oc[i]*y_hat[i] for i in V) + obj_sp0 + obj_spi
+        else
+            upper_bound =  sum(ring_cost[i,j]*x_hat[i,j] for (i,j) in E)+ sum(opening_cost[i]*y_hat[i] for i in V) + obj_sp0 + obj_spi
+        end
+
+        if upper_bound < global_upper_bound
+            global_upper_bound = upper_bound
+            @info "New global upper bound = $(global_upper_bound)"
+        end
         
-
-        upper_bound =  sum(ring_cost[i,j]*x_hat[i,j] for (i,j) in E)+ sum(opening_cost[i]*y_hat[i] for i in V) + obj_sp0 + obj_spi
-
+        @show "Current upper bound $(upper_bound), Global Upper bound = $(global_upper_bound)"
+        
         open("result/bender/debug_$(iter0).txt","w") do io
             println(io, "Lower bound: $(lower_bound)")
             println(io, "Route: $(transform_route(x_hat))")
@@ -111,7 +123,8 @@ function main_program()
             break
         end
 
-        _add_cut_SP0(master, alpha,beta, lambda_0_hat, x_hat_1)
+        # Add cut (Not splitting SP0)
+        _add_cut_SP0_combined(master, alpha, beta, lambda_0_hat, x_hat)
         for i in 1:n
             y_hat[i] == 0 && φ[i]!= 0|| continue
             _add_cut_SPi(master, φ, γ, i, lambda_hat, y_hat)

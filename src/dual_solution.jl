@@ -89,42 +89,97 @@ function _dual_star_structure(_y_hat, star_cost0)
     return φ, γ
 end
 
-function dual_solution(y_hat, x_hat, backup_edge_1, backup_edge_2, star_cost0) 
+function dual_solution(y_hat, x_hat, V_tilt, n, backup_edge_1, backup_edge_2, star_cost0) 
     # Output: beta, alpha, φ, γ
-    return _dual_backup_edges(y_hat, x_hat, backup_edge_1, backup_edge_2), _dual_star_structure(y_hat, star_cost0)
+    # return _dual_backup_edges(y_hat, x_hat, backup_edge_1, backup_edge_2), _dual_star_structure(y_hat, star_cost0)
+    return dual_solution_sp0(x_hat, n, V_tilt, backup_edge_1, backup_edge_2), _dual_star_structure(y_hat, star_cost0)
 end
 
-# y_hat = [1.0  0.0  0.0  0.0  0.0  0.0;
-# 0.0  0.0  0.0  0.0  0.0  0.0;
-# 0.0  0.0  1.0  0.0  0.0  0.0;
-# 0.0  0.0  0.0  1.0  0.0  0.0;
-# 0.0  0.0  0.0  0.0  1.0  0.0;
-# 0.0  0.0  0.0  0.0  0.0  1.0]
+function transform_route(x_hat)
+    path = [1]
+    num0 = size(x_hat)[1]
+    while length(path) < 2 || path[1]!=path[end]
+        if length(path) == sum(x_hat[i,j] for i in 1:num0 for j in 1:num0 if i<j)
+            break
+        else
+            for vertex in 2:num0
+                if x_hat[path[end], vertex] == 1 && vertex ∉ path[2:end]
+                    push!(path, vertex)
+                    break
+                end
+            end
+        end
+    end
+    return push!(path,1)
+end
 
-# x_hat = [0.0  0.0  1.0  1.0  0.0  0.0;
-# 0.0  0.0  0.0  0.0  0.0  0.0;
-# 1.0  0.0  0.0  0.0  0.0  1.0;
-# 1.0  0.0  0.0  0.0  1.0  0.0;
-# 0.0  0.0  0.0  1.0  0.0  1.0;
-# 0.0  0.0  1.0  0.0  1.0  0.0]
-
-# Test 2
 
 
-y_hat = [
-    1.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0;
-    0.0   1.0  -0.0  -0.0  -0.0  -0.0   0.0  -0.0   0.0  -0.0;
-   -0.0  -0.0   1.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0;
-    1.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0;
-    1.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0;
-    1.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0;
-   -0.0  -0.0  -0.0  -0.0  -0.0  -0.0   1.0  -0.0  -0.0  -0.0;
-    1.0  -0.0   0.0  -0.0  -0.0  -0.0  -0.0   0.0  -0.0  -0.0;
-   -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0   1.0  -0.0;
-    1.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0  -0.0]
+# input: x_hat
+# output: alpha, beta
+function dual_solution_sp0(x_hat, n, V_tilt, backup1, backup2)
+    # Initialize
+    tour = transform_route(x_hat)
+    saved0 = zeros(n,n)
+    alpha = Dict()
+    beta = Dict()
 
-# @show _list_hub(y_hat)
-# @show _dual_star_structure(y_hat, star_cost)
-# @show minimum(sc[2, V_certain])
-# @show dual_solution(y_hat, x_hat)
-# @show _dual_backup_edges(y_hat, x_hat, backup)
+    # Calculate beta 
+    for idx_node in range(2,length(tour)-1)
+        if tour[idx_node] in V_tilt
+            node1, node2 = minmax(tour[idx_node-1],tour[idx_node+1])
+            if saved0[node1, node2] == 0
+                beta[(node1, tour[idx_node], node2)] = backup1[node1, node2]
+                saved0[node1, node2] = 1
+            end
+        end
+    end
+
+    for idx_node in range(2,length(tour)-2)
+        if tour[idx_node] in V_tilt && tour[idx_node+1] in V_tilt
+            node1, node2 = minmax(tour[idx_node - 1], tour[idx_node + 2])
+            if saved0[node1, node2] == 0
+                alpha[(tour[idx_node], tour[idx_node + 1], tour[idx_node - 1], tour[idx_node + 2])] = backup2[node1, node2]
+                saved0[node1, node2] = 1
+            end
+        end
+    end
+
+    # for idx_node in range(2,length(tour)-1)
+    #     tour[idx_node] in V_tilt || continue
+    #     for node_prime in range(1, n)
+    #         if node_prime ∉ [tour[idx_node+1], tour[idx_node-1], tour[idx_node]]
+    #             node1_prime, node2_prime = minmax(tour[idx_node - 1], node_prime)
+    #             if saved0[node1_prime, node2_prime] == 0
+    #                 beta[(node1_prime, tour[idx_node], node2_prime)] = backup1[node1_prime, node2_prime]
+    #                 saved0[node1_prime, node2_prime] = 1
+    #             end
+    #         end
+    #     end
+    # end
+
+    # for idx_node in range(2,length(tour)-2)
+    #     if tour[idx_node] in V_tilt && tour[idx_node+1] in V_tilt
+    #         for node_prime in range(1,n)
+    #             if node_prime ∉ [tour[idx_node], tour[idx_node-1], tour[idx_node+1], tour[idx_node+2]]
+    #                 node1, node2 = minmax(node_prime, tour[idx_node-1])
+    #                 if saved0[node1, node2] == 0
+    #                     alpha[(tour[idx_node], tour[idx_node+1], tour[idx_node-1], node_prime)] = backup[node1, node2]
+    #                     saved0[node1, node2] = 1
+    #                 end
+    #             end
+    #         end
+    #     end
+    # end
+    return beta, alpha
+end
+
+# x_hat = zeros(Int, 8,8)
+# for (i,j) in [(1,3), (3,4), (4,6), (6,5), (5,2), (2,1)]
+#     x_hat[i,j] = 1
+#     x_hat[j,i] = 1
+# end
+# backup = ones(Int, 8, 8)
+# beta, alpha = dual_solution_sp0(x_hat, 8, [2,3,4,5,6,7,8], backup, ones(Int,8,8))
+# # test = sum((x_hat[minmax(i,j)[1], minmax(i,j)[2]]+ x_hat[minmax(j,k)[1], minmax(j,k)[2]]-1)*beta[(i,j,k)] for (i,j,k) in keys(beta))
+# test = sum((x_hat[minmax(i,k)[1], minmax(i,k)[2]] + x_hat[minmax(k,t)[1], minmax(k,t)[2]] + x_hat[minmax(t,j)[1], minmax(t,j)[2]] -2) * alpha[(k,t,i,j)] for (k,t,i,j) in keys(alpha))
