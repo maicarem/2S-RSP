@@ -10,7 +10,7 @@ include("mutable_structure.jl")
 include("user_cut.jl")
 
 
-pars = MainPar(uc_strat = 3, transformation = true, alpha = 3, benders = true, split_sp0 = true)
+pars = MainPar(uc_strat = 3, transformation = false, alpha = 3, benders = true, split_sp0 = true)
 name = "instances/small_instances/small_instance_10.dat"
 n, oc, sc, rc = read_input_random(name, pars)
 V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, pars)
@@ -122,7 +122,7 @@ function main_program()
             println("This is optimal with objective $(lower_bound)")
             break
         end
-
+        
         # Add cut (Not splitting SP0)
         _add_cut_SP0_combined(master, alpha, beta, lambda_0_hat, x_hat)
         for i in 1:n
