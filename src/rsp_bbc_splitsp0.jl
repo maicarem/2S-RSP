@@ -21,6 +21,8 @@ opening_cost, ring_cost, star_cost = oc, rc, sc
 if pars.transformation
     offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
 end
+lb_distance = _find_lower_bound_backup(n, V_tilt, rc)
+
 
 master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
 
@@ -39,6 +41,14 @@ end
 @constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i])
 @constraint(master, sum(x[i,j] for (i,j) in E) >= 6)
 @constraint(master, y[1] == 1)
+if length(V_tilt) >= 1
+    if pars.transformation
+        @constraint(master, lambda_01 >= sum(y[i]* lb_distance[i] for i in V_tilt))
+    else
+        @constraint(master, lambda_01 + lambda_02 >= sum(y[i]* lb_distance[i] for i in V_tilt))
+    end
+end
+
 
 function main()
     global_upper_bound = 1e18

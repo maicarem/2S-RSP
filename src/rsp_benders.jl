@@ -26,15 +26,14 @@ master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0))
 @variable(master, x[i in V, j in V; i<j], Bin)
 @variable(master, y[i in V], Bin)
 @variable(master, sigma>=0, Int)
-@variable(master, lambda_01>=0)
-@variable(master, lambda_02>=0)
+@variable(master, lambda_0>=0)
 @variable(master, lambda[i in V]>=0)
 
 # Objective Function
 if pars.transformation
-    @objective(master, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i] for i in V)+ lambda_01 + lambda_02 + sum(lambda[i] for i in V))
+    @objective(master, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
 else
-    @objective(master, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V)+ lambda_01 + lambda_02 + sum(lambda[i] for i in V))
+    @objective(master, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
 end
 
 # Constraint
@@ -42,11 +41,7 @@ end
 @constraint(master, sum(x[i,j] for (i,j) in E) >= 6)
 @constraint(master, y[1] == 1)
 if length(V_tilt) >= 1
-    if pars.transformation
-        @constraint(master, lambda_01 >= sum(y[i]* lb_distance[i] for i in V_tilt))
-    else
-        @constraint(master, lambda_01 + lambda_02 >= sum(y[i]* lb_distance[i] for i in V_tilt))
-    end
+    @constraint(master, lambda_0 >= sum(y[i]* lb_distance[i] for i in V_tilt))
 end
 
 function main_program()
@@ -84,7 +79,7 @@ function main_program()
         println("Objective value at iteration $(iter0) is $(lower_bound)")
         x_hat_1, y_hat = Bool.(round.(value.(x))), Bool.(round.(value.(y)))
         x_hat = _transform_matrix(x_hat_1)
-        lambda_01_hat, lambda_02_hat, lambda_hat = value(lambda_01), value(lambda_02), round.(value.(lambda))
+        lambda_0_hat, lambda_hat = value(lambda_0), round.(value.(lambda))
         
         if pars.transformation
             (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, V_tilt, n, backup, ring_cost, sc)
@@ -118,7 +113,7 @@ function main_program()
             break
         end
 
-        _add_cut_SP0_test(master, alpha,beta, lambda_01_hat, lambda_02_hat, x_hat_1)
+        _add_cut_SP0(master, alpha,beta, lambda_0_hat, x_hat)
         for i in 1:n
             y_hat[i] == 0 && φ[i]!= 0|| continue
             _add_cut_SPi(master, φ, γ, i, lambda_hat, y_hat)
