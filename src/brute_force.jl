@@ -1,8 +1,9 @@
-function three_hub(n, V_certain, rc, sc, oc)
+function three_hubs(n, V_certain, rc, sc, oc)
+    t = time()
     global_obj = 1e18
     global_sol = []
     if length(V_certain) < 3
-        return global_obj, global_sol
+        return global_obj, global_sol, time() - t
     else
         obj = oc[1]
         for i1 in V_certain[V_certain .!= 1] 
@@ -20,14 +21,15 @@ function three_hub(n, V_certain, rc, sc, oc)
             end
         end 
     end
-    return global_obj, global_sol
+    return global_obj, global_sol, time() - t
 end
 
 function four_hubs(n, V_tilt, V_certain, rc, sc, oc)
+    t = time()
     global_obj = 1e18
     global_sol = []
     if length(V_certain) < 3 
-        return global_obj, global_sol
+        return global_obj, global_sol, time() - t
     else
         for i1 in V_certain[V_certain .!= 1] 
             for i2 in V_certain
@@ -71,7 +73,7 @@ function four_hubs(n, V_tilt, V_certain, rc, sc, oc)
         end
 
     end
-    return global_obj, global_sol
+    return global_obj, global_sol, time() - t
 end
 
 function cal_star_cost_3uncertains(sc, v, H_tilt)
@@ -109,7 +111,7 @@ end
 
 
 function five_hubs(n, V_tilt, rc, oc, sc)
-    
+    t = time()
     global_cost = 1e18
     global_sol = []
 
@@ -214,25 +216,5 @@ function five_hubs(n, V_tilt, rc, oc, sc)
             end
         end
     end
-    return global_cost, global_sol
+    return global_cost, global_sol, time() - t
 end
-
-
-using JuMP, Gurobi
-using Combinatorics
-using Graphs, GraphsFlows
-
-include("dat.jl")
-include("misc.jl")
-include("write_output.jl")
-include("mutable_structure.jl")
-include("user_cut.jl")
-
-# Initialize Sets
-pars = MainPar(uc_strat = 3, transformation = false, alpha = 3)
-name = "instances/small_instances/small_instance_10.dat"
-n, oc, sc, rc = read_input_random(name, pars)
-V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, pars)
-@show five_hubs(n, V_tilt, rc, oc, sc)
-@show four_hubs(n, V_tilt, V_certain, rc, sc, oc)
-@show three_hub(n, V_certain, rc, sc, oc)
