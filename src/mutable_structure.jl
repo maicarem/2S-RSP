@@ -13,5 +13,6 @@ using Parameters
     transformation::Bool = true
     benders::Bool = false
     uc::Bool = false
+    one_cut::Bool = false
     alpha::Int = 3
 end

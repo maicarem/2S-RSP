@@ -63,17 +63,6 @@ function _list_hub(_y_hat)
    return hub, hub_tilt 
 end
 
-function cal_obj_sp0(alpha, beta, x_hat)
-    K_tilt_1 = find_index(beta)
-    J_tilt_1 = find_index(alpha)
-    if length(V_tilt) == 1
-        return sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt_1)
-    elseif length(V_tilt) == 0
-        return 0
-    else
-        return sum((x_hat[k,i] + x_hat[i,j]+x_hat[j,t] - 2) * alpha[i,j,k,t] for (i,j,k,t) in J_tilt_1) + sum((x_hat[i,j]+ x_hat[j,k] - 1)* beta[i,j,k] for (i,j,k) in K_tilt_1)
-    end
-end
 
 
 function cal_obj_spi(varphi, gamma, y_hat)
@@ -275,9 +264,17 @@ end
 
 
 # Add cut SP0 (no splitting)
-function _add_cut_SP0(master, _alpha,_beta,_lambda, _x_hat)
-    if !(_lambda >= sum((_x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ _x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta))+ sum((_x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + _x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+_x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
-        cut = @constraint(master, lambda_0 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta)) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
+function _add_cut_SP0(master, _alpha,_beta,_lambda, sp0, sp1)
+    if !(_lambda >= sp0 + sp1)
+        cut = @constraint(master, lambda_0 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta) if length(keys(_alpha))>0) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha) if length(keys(_alpha))>0))
         @info "Adding the cut lambda_0 $(cut)"
+    end
+end
+
+function _add_one_cut(master, sp0, sp1, _alpha, _beta, _lambda_one_hat, n, _varphi, _gamma)
+    if !(_lambda_one_hat >= sp0 + sp1)
+        con = @constraint(master, lambda_one >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta) if length(keys(_alpha))>0) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha) if length(keys(_alpha))>0)
+                                                + sum(3(1-y[indice])*_varphi[indice] for indice in 1:n) - sum(y[j]*_gamma[indice,j] for indice in 1:n for j in 1:n if j!=indice))
+        @info "Adding only one cut $(con)"
     end
 end
