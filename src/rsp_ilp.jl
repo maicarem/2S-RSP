@@ -2,30 +2,10 @@ using JuMP, Gurobi
 using Combinatorics
 using Graphs, GraphsFlows
 
-include("dat.jl")
 include("misc.jl")
-include("write_output.jl")
-include("mutable_structure.jl")
 include("user_cut.jl")
-include("brute_force.jl")
 
 starting_time = time()
-
-# Initialize Sets
-pars = MainPar(uc_strat = 3, transformation = true, alpha = 3)
-name = "instances/small_instances/small_instance_10.dat"
-n, oc, sc, rc = read_input_random(name, pars)
-V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, pars)
-opening_cost, ring_cost, star_cost = oc, rc, sc
-if pars.transformation
-    offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
-end
-
-starting_time = time()
-
-objval_3, objsol_3, objtime_3 = three_hubs(n, V_certain, rc, sc, oc)
-objval_4, objsol_4, objtime_4 = four_hubs(n, V_tilt, V_certain, rc, sc, oc)
-objval_5, objsol_5, objtime_5 = five_hubs(n, V_tilt, rc, oc, sc)
 
 main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 
@@ -37,7 +17,7 @@ main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 if pars.transformation
     @variable(main, x_prime_prime[i in V,j in V; i<j], Bin)
 else
-    @variable(main, sigma>= 0, Int)
+    @variable(main, sigma >= 0, Int)
 end
 
 # OBJECTIVE FUNCTION
@@ -69,6 +49,18 @@ if pars.uc
 end
 
 optimize!(main)
-@show time() - starting_time
-@show objval_3, objval_4, objval_5
-@show objtime_3, objtime_4, objtime_5
+@show value.(x_prime)
+# @show value.(x_prime_prime)
+@show value.(x)
+
+
+println("========================")
+for i in 1:n
+    for j in 1:n
+        println("rc[$(i), $(j)] = $(rc[i,j])")
+        println("ring_cost[$(i), $(j)] = $(ring_cost[i,j])")
+        println("backup[$(i), $(j)] = $(backup[i,j])")
+    end
+end
+
+_write_gurobi_log(main, "ilp", name, pars, n, V_tilt, 0)

@@ -10,9 +10,11 @@ using Parameters
     uc_tolerance::Float64 = 0.01
     time_limit::Int = 3600
     @assert time_limit >= 0 # time_limit = 0 means infinity
-    transformation::Bool = true
+    transformation::Bool = false
     benders::Bool = false
     uc::Bool = false
     one_cut::Bool = false
+    split_sp0::Bool = false
     alpha::Int = 3
+    max_iter::Int = 500
 end

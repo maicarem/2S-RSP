@@ -1,18 +1,18 @@
-function three_hubs(n, V_certain, rc, sc, oc)
+function three_hubs(n, V_certain, ring_cost, star_cost, opening_cost)
     t = time()
     global_obj = 1e18
     global_sol = []
     if length(V_certain) < 3
         return global_obj, global_sol, time() - t
     else
-        obj = oc[1]
+        obj = opening_cost[1]
         for i1 in V_certain[V_certain .!= 1] 
             for i2 in V_certain
                 i2!= 1 && i2 > i1 || continue
-                obj += oc[i1] + oc[i2] + rc[1, i1]+ rc[1, i2] + rc[i1, i2]
+                obj += opening_cost[i1] + opening_cost[i2] + ring_cost[1, i1]+ ring_cost[1, i2] + ring_cost[i1, i2]
                 for v in 2:n
                     v ∉ [i1, i2] || continue
-                    obj += min(sc[v,1], sc[v,i1], sc[v, i2])
+                    obj += min(star_cost[v,1], star_cost[v,i1], star_cost[v, i2])
                 end
                 if obj < global_obj
                     global_obj = obj
@@ -24,7 +24,7 @@ function three_hubs(n, V_certain, rc, sc, oc)
     return global_obj, global_sol, time() - t
 end
 
-function four_hubs(n, V_tilt, V_certain, rc, sc, oc)
+function four_hubs(n, V_tilt, V_certain, ring_cost, star_cost, opening_cost)
     t = time()
     global_obj = 1e18
     global_sol = []
@@ -36,37 +36,37 @@ function four_hubs(n, V_tilt, V_certain, rc, sc, oc)
                 i2 != 1 && i2!= i1 || continue
                 for i3 in 2:n
                     i3 ∉ [i1, i2] || continue
-                    obj = oc[i1]+ oc[i2] + oc[i3] + oc[1]
+                    obj = opening_cost[i1]+ opening_cost[i2] + opening_cost[i3] + opening_cost[1]
                     # STAR cost
                     for v in 2:n
                         v ∉ [i1, i2, i3] || continue
                         if i3 ∈ V_tilt
-                            obj += min(sc[v,1], sc[v,i1], sc[v,i2])
+                            obj += min(star_cost[v,1], star_cost[v,i1], star_cost[v,i2])
                         else 
-                            obj += min(sc[v,1], sc[v,i1], sc[v,i2], sc[v,i3])
+                            obj += min(star_cost[v,1], star_cost[v,i1], star_cost[v,i2], star_cost[v,i3])
                         end
                     end
 
                     # RING cost
-                    function cal_cost(v1,v2,v3,v4, rc, V_tilt)
-                        obj1 = rc[v1, v2] + rc[v2, v3] + rc[v3, v4] + rc[v4, v1]
+                    function cal_cost(v1,v2,v3,v4, ring_cost, V_tilt)
+                        obj1 = ring_cost[v1, v2] + ring_cost[v2, v3] + ring_cost[v3, v4] + ring_cost[v4, v1]
                         if v1 ∈ V_tilt
-                            obj1 += rc[v2, v4]
+                            obj1 += ring_cost[v2, v4]
                         end
                         return obj1
                     end
                     m = 1e18
-                    local_solution = []
+                    lopening_costal_solution = []
                     for (i,j, k,t) in [(i3, 1, i2, i1), (i3, i2, i1, 1), (i3, i1, 1, i2)]
-                        if cal_cost(i,j,k,t, rc, V_tilt) < m
-                            m = cal_cost(i,j,k,t, rc, V_tilt)
-                            local_solution = [i,j,k,t]
+                        if cal_cost(i,j,k,t, ring_cost, V_tilt) < m
+                            m = cal_cost(i,j,k,t, ring_cost, V_tilt)
+                            lopening_costal_solution = [i,j,k,t]
                         end
                     end
                     obj += m
                     if obj < global_obj
                         global_obj = obj
-                        global_sol = local_solution
+                        global_sol = lopening_costal_solution
                     end
                 end
             end
@@ -76,50 +76,54 @@ function four_hubs(n, V_tilt, V_certain, rc, sc, oc)
     return global_obj, global_sol, time() - t
 end
 
-function cal_star_cost_3uncertains(sc, v, H_tilt)
-    return sum(sort(sc[v, H_tilt])[1:3])
+function cal_star_cost_3uncertains(star_cost, v, H_tilt)
+    if length(H_tilt)<3
+        return 1e18
+    else
+        return sum(sort(star_cost[v, H_tilt])[1:3])
+    end
 end
 
-function cal_tour_uncertain(rc, tour)
-    return sum([rc[tour[i],tour[j]] for i in 1:4 for j in i+1:5])
+function cal_tour_uncertain(ring_cost, tour)
+    return sum([ring_cost[tour[i],tour[j]] for i in 1:4 for j in i+1:5])
 end
 
-function cal_tour_certain(rc, tour)
-    return sum([rc[tour[i],tour[i+1]] for i in 1:4])+ rc[tour[5], tour[1]]
+function cal_tour_certain(ring_cost, tour)
+    return sum([ring_cost[tour[i],tour[i+1]] for i in 1:4])+ ring_cost[tour[5], tour[1]]
 end
 
-function cal_tour_mixed(rc, tour, H_tilt)
-    cost0 = cal_tour_certain(rc, tour)
+function cal_tour_mixed(ring_cost, tour, H_tilt)
+    cost0 = cal_tour_certain(ring_cost, tour)
 
     for k in 3:4
         if tour[k] ∈ H_tilt
-            cost0 += rc[k-1, k+1]
+            cost0 += ring_cost[k-1, k+1]
         end
     end
     if (tour[2] ∈ H_tilt && tour[3] ∈ H_tilt) || tour[5] ∈ H_tilt
-        cost0 += rc[tour[1], tour[4]]
+        cost0 += ring_cost[tour[1], tour[4]]
     end
     if tour[3] ∈ H_tilt && tour[4] ∈ H_tilt
-        cost0 += rc[tour[2], tour[5]]
+        cost0 += ring_cost[tour[2], tour[5]]
     end
     if tour[4] ∈ H_tilt && tour[5] ∈ H_tilt || tour[2] ∈ H_tilt
-        cost0 += rc[tour[1], tour[3]]
+        cost0 += ring_cost[tour[1], tour[3]]
     end
     return cost0
 end
 
 
 
-function five_hubs(n, V_tilt, rc, oc, sc)
+function five_hubs(n, V_tilt, ring_cost, opening_cost, star_cost)
     t = time()
     global_cost = 1e18
     global_sol = []
 
     for i2 in 1:n-3
         for i3 in i2+1:n-2
-            for i4 in i2+1:n-1
-                for i5 in i3+1:n
-                    obj = oc[1] + oc[i2] + oc[i3] + oc[i4] + oc[i5]
+            for i4 in i3+1:n-1
+                for i5 in i4+1:n
+                    obj = opening_cost[1] + opening_cost[i2] + opening_cost[i3] + opening_cost[i4] + opening_cost[i5]
                     H_tilt = []
                     H_certain = [1]
                     for m in [i2, i3, i4, i5]
@@ -132,25 +136,25 @@ function five_hubs(n, V_tilt, rc, oc, sc)
                     if length(H_tilt) < 3
                         for k in 2:n
                             if k ∉ [i2, i3, i4, i5]
-                                obj += minimum(sc[k, v] for v in H_certain)   
+                                obj += minimum(star_cost[k, v] for v in H_certain)   
                             end
                         end
                     elseif length(H_certain) == 0
                         for k in 2:n
                             if k ∉ [i2, i3, i4, i5]
-                                obj += cal_star_cost_3uncertains(sc, k, H_tilt)
+                                obj += cal_star_cost_3uncertains(star_cost, k, H_tilt)
                             end
                         end
                     else
                         for k in 2:n
                             if k ∉ [i2, i3, i4, i5]
-                                obj += min(cal_star_cost_3uncertains(sc, k, H_tilt), minimum(sc[k, v] for v in H_certain))
+                                obj += min(cal_star_cost_3uncertains(star_cost, k, H_tilt), minimum(star_cost[k, v] for v in H_certain))
                             end
                         end
                     end
                     
-                    local_cost = 1e18
-                    local_solution = []
+                    lopening_costal_cost = 1e18
+                    lopening_costal_solution = []
                     
                     if length(H_tilt) == 4
                         for tour in [[1, i2, i3, i4, i5],
@@ -165,9 +169,9 @@ function five_hubs(n, V_tilt, rc, oc, sc)
                                     [1, i5, i2, i3, i4],
                                     [1, i5, i3, i2, i4],
                                     [1, i5, i4, i2, i3]]
-                            cost0 = cal_tour_uncertain(rc, tour)
-                            if cost0 < local_cost
-                                local_cost = cost0
+                            cost0 = cal_tour_uncertain(ring_cost, tour)
+                            if cost0 < lopening_costal_cost
+                                lopening_costal_cost = cost0
                             end
                         end
                     elseif length(H_tilt) == 0
@@ -183,9 +187,9 @@ function five_hubs(n, V_tilt, rc, oc, sc)
                             [1, i5, i2, i3, i4],
                             [1, i5, i3, i2, i4],
                             [1, i5, i4, i2, i3]]
-                            cost0 = cal_tour_certain(rc, tour)
-                            if cost0 < local_cost
-                                local_cost = cost0
+                            cost0 = cal_tour_certain(ring_cost, tour)
+                            if cost0 < lopening_costal_cost
+                                lopening_costal_cost = cost0
                             end
                         end
                     else
@@ -201,15 +205,15 @@ function five_hubs(n, V_tilt, rc, oc, sc)
                             [1, i5, i2, i3, i4],
                             [1, i5, i3, i2, i4],
                             [1, i5, i4, i2, i3]]
-                            cost0 = cal_tour_mixed(rc, tour, H_tilt)
-                            if cost0 < local_cost
-                                local_cost = cost0
+                            cost0 = cal_tour_mixed(ring_cost, tour, H_tilt)
+                            if cost0 < lopening_costal_cost
+                                lopening_costal_cost = cost0
                             end
                         end
                     end
-                    local_cost += obj
-                    if local_cost < global_cost
-                        global_cost = local_cost
+                    lopening_costal_cost += obj
+                    if lopening_costal_cost < global_cost
+                        global_cost = lopening_costal_cost
                         global_sol = [1, i2, i3, i4, i5]
                     end
                 end

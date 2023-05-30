@@ -264,8 +264,8 @@ end
 
 
 # Add cut SP0 (no splitting)
-function _add_cut_SP0(master, _alpha,_beta,_lambda, sp0, sp1)
-    if !(_lambda >= sp0 + sp1)
+function _add_cut_SP0(master, _alpha,_beta,_lambda, sp0)
+    if !(_lambda >= sp0)
         cut = @constraint(master, lambda_0 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta) if length(keys(_alpha))>0) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha) if length(keys(_alpha))>0))
         @info "Adding the cut lambda_0 $(cut)"
     end
