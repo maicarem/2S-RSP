@@ -1,55 +1,63 @@
-using JuMP, Gurobi
-using Combinatorics
-using Graphs, GraphsFlows
-
 import GLPK
 import MathOptInterface as MOI
-import Dates
 
-include("dat.jl")
+result_dict = Dict()
+result_dict["algorithm"] = "bbc"
+for param_name in ["num_constraint_ilp_including_integrality", 
+                    "num_constraint_ilp_notinclude_integrality", 
+                    "lower_bound", 
+                    "upper_bound", 
+                    "num_subtour", 
+                    "num_hubs",
+                    "time_sp",
+                    "time_master",
+                    "total_time",
+                    "num_cut_sp0",
+                    "num_cut_spi",
+                    "obj_bf3",
+                    "obj_bf4",
+                    "obj_bf5",
+                    "time_bf3",
+                    "time_bf4",
+                    "time_bf5",
+                    "timestamp"]
+    result_dict[param_name] = 0
+end
+
 include("dual_solution.jl")
 include("misc.jl")
-include("mutable_structure.jl")
-include("user_cut.jl")
 
-
-pars = MainPar(uc_strat = 3, transformation = true , alpha = 3, benders = true)
-name = "instances/small_instances/small_instance_10.dat"
-n, oc, sc, rc = read_input_random(name, pars)
-V, V_tilt, V_certain, A, A_prime, E, T_tilt, J_tilt, K_tilt = _declare_set(n, pars)
-opening_cost, ring_cost, star_cost = oc, rc, sc
-if pars.transformation
-    offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
-end
 lb_distance = _find_lower_bound_backup(n, V_tilt, rc)
-master = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
+master_bbc = Model(optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 1))
+set_time_limit_sec(master_bbc, pars.time_limit)
 
-@variable(master, x[i in V, j in V; i<j], Bin)
-@variable(master, y[i in V], Bin)
-@variable(master, lambda_0>=0)
-@variable(master, lambda[i in V]>=0)
+@variable(master_bbc, x[i in V, j in V; i<j], Bin)
+@variable(master_bbc, y[i in V], Bin)
+@variable(master_bbc, lambda_0>=0)
+@variable(master_bbc, lambda[i in V]>=0)
 
 if pars.transformation
-    @objective(master, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
+    @objective(master_bbc, Min, offset + sum(rc[i,j]*x[i,j] for (i,j) in E)+ sum(oc[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
 else
-    @objective(master, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
+    @objective(master_bbc, Min, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V)+ lambda_0 + sum(lambda[i] for i in V))
 end
 
-@constraint(master, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i])
-@constraint(master, sum(x[i,j] for (i,j) in E) >= 6)
-@constraint(master, y[1] == 1)
+@constraint(master_bbc, degree_constr[i in V] ,sum(x[minmax(i,j)] for j in V if i!=j)==  2*y[i])
+@constraint(master_bbc, sum(x[i,j] for (i,j) in E) >= 6)
+@constraint(master_bbc, y[1] == 1)
+
 if length(V_tilt) >= 1
-    @constraint(master, lambda_0 >= sum(y[i]* lb_distance[i] for i in V_tilt))
+    @constraint(master_bbc, lambda_0 >= sum(y[i]* lb_distance[i] for i in V_tilt))
 end
 
-function main()
+function main_rsp_bbc()
     global_upper_bound = 1e18
     function my_callback_benders_cut(cb_data)
         x_hat = Bool.(round.(callback_value.(cb_data, x)))
         y_hat = Bool.(round.(callback_value.(cb_data, y)))
         x_hat = _transform_matrix(x_hat)
         
-        status = callback_node_status(cb_data, master)
+        status = callback_node_status(cb_data, master_bbc)
         all_cycles = find_cycle(x_hat, y_hat)
 
         if status == MOI.CALLBACK_NODE_STATUS_INTEGER
@@ -59,12 +67,15 @@ function main()
                 for each_cycle in all_cycles
                     con = @build_constraint(length(each_cycle) - 1/(length(_list_hub)- length(each_cycle))*sum(y[i] for i in _list_hub if i ∉ each_cycle)>= 
                     sum(x[minmax(each_cycle[i], each_cycle[i+1])] for i in eachindex(each_cycle[1:end-1]))+ x[minmax(each_cycle[1], each_cycle[end])])
-                    MOI.submit(master, MOI.LazyConstraint(cb_data), con)
+                    MOI.submit(master_bbc, MOI.LazyConstraint(cb_data), con)
+                    result_dict["num_subtour"] += 1
                 end
             elseif length(all_cycles) == 1
+                
                 lambda_0_hat = round(callback_value(cb_data, lambda_0))
                 lambda_hat = round.(callback_value.(cb_data, lambda))
                 
+                time_sp = time()
                 if pars.transformation
                     (beta, alpha), (φ, γ) = dual_solution(y_hat, x_hat, V_tilt, n, backup, ring_cost, sc)
                 else
@@ -93,18 +104,22 @@ function main()
                 
                 gap = (upper_bound - lower_bound)/upper_bound
                 # ADD SP0
-                if !(lambda_0_hat >= sum((x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* beta[(val[1],val[2],val[3])] for val in keys(beta))+ sum((x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * alpha[(val[1],val[2],val[3],val[4])] for val in keys(alpha)))
+                if !(lambda_0_hat >= obj_sp0)
                     cut = @build_constraint(lambda_0 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* beta[(val[1],val[2],val[3])] for val in keys(beta)) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * alpha[(val[1],val[2],val[3],val[4])] for val in keys(alpha)))
-                    MOI.submit(master, MOI.LazyConstraint(cb_data), cut)
+                    MOI.submit(master_bbc, MOI.LazyConstraint(cb_data), cut)
+                    result_dict["num_cut_sp0"] += 1
                 end
                 # Add SPi
                 for i in 1:n
                     y_hat[i] == 0 && φ[i]!= 0|| continue
                     if !(lambda_hat[i] >= 3(1-y_hat[i])*φ[i] - sum(y_hat[j]*γ[i,j] for j in V if j!=i))
                         con = @build_constraint(lambda[i] >= 3(1-y[i])*φ[i] - sum(y[j]*γ[i,j] for j in V if j!=i))
-                        MOI.submit(master, MOI.LazyConstraint(cb_data), con)     
+                        MOI.submit(master_bbc, MOI.LazyConstraint(cb_data), con)
+                        result_dict["num_cut_spi"] += 1     
                     end
                 end
+                result_dict["time_sp"] = time() - time_sp
+                result_dict["num_hubs"] = floor(Int, sum(y_hat[i] for i in 1:n))
             end
 
                 # add cut SP0
@@ -115,8 +130,18 @@ function main()
     # # # # # # # # # # # # 
     # MAIN PROGRAM
     # # # # # # # # # # # # 
-    set_attribute(master, MOI.LazyConstraintCallback(), my_callback_benders_cut)
-    optimize!(master)
+    set_attribute(master_bbc, MOI.LazyConstraintCallback(), my_callback_benders_cut)
+    optimize!(master_bbc)
+
+    result_dict["num_constraint_ilp_including_integrality"] = num_constraints(master_bbc; count_variable_in_set_constraints = true)
+    result_dict["num_constraint_ilp_notinclude_integrality"] = num_constraints(master_bbc; count_variable_in_set_constraints = false)
+    result_dict["lower_bound"] = objective_bound(master_bbc)
+    result_dict["upper_bound"] = objective_value(master_bbc)
+    result_dict["total_time"] = solve_time(master_bbc)
+    result_dict["timestamp"] = now()
+
+    @show result_dict
+    _write_log_bbc(name, master_bbc, n, V_tilt, "bbc", pars)
 end
 
-main()
+main_rsp_bbc()
