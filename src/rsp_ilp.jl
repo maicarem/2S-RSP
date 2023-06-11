@@ -1,13 +1,11 @@
-using JuMP, Gurobi
-using Combinatorics
-using Graphs, GraphsFlows
-
 include("misc.jl")
 include("user_cut.jl")
 
-result_dict = Dict()
-main = Model(optimizer_with_attributes(Gurobi.Optimizer))
 
+main = Model(optimizer_with_attributes(Gurobi.Optimizer))
+set_time_limit_sec(main, pars.time_limit)
+result_dict = Dict()
+result_dict["algorithm"] = "ilp"
 for param_name in ["num_constraint_ilp_including_integrality", 
                     "num_constraint_ilp_notinclude_integrality", 
                     "lower_bound", 
@@ -110,8 +108,7 @@ result_dict["num_hubs"] = sum(value(y[i,i]) for i in 1:n)
 result_dict["total_time"] = solve_time(main)
 result_dict["timestamp"] = now()
 
-println(result_dict)
-
-
+@show name
+write_ouput(pars, name, result_dict, MainPar)
 
 # _write_gurobi_log(main, "ilp", name, pars, n, V_tilt, 0)

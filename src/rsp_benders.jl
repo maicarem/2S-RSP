@@ -2,6 +2,7 @@ include("misc.jl")
 include("dual_solution.jl")
 
 result_dict = Dict()
+result_dict["algorithm"] = "benders"
 for param_name in ["num_constraint_ilp_including_integrality", 
                     "num_constraint_ilp_notinclude_integrality", 
                     "lower_bound", 
@@ -161,8 +162,7 @@ function rsp_benders(pars, n, oc, sc, rc, backup, lb_distance, opening_cost, rin
         result_dict["timestamp"] = now()
         result_dict["lower_bound"] = lower_bound
         result_dict["upper_bound"] = global_upper_bound
-        @show result_dict
-
+        write_ouput(pars, name, result_dict, MainPar)
         # _write_log_benders(name, n, V_tilt, "benders", lower_bound, global_upper_bound, time() - starting_time, pars)
     end
 

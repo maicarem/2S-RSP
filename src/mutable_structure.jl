@@ -15,6 +15,6 @@ using Parameters
     uc::Bool = false
     one_cut::Bool = false
     split_sp0::Bool = false
-    alpha::Int = 3
+    alpha::Int = 5
     max_iter::Int = 500
 end
