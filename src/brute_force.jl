@@ -222,3 +222,60 @@ function five_hubs(n, V_tilt, ring_cost, opening_cost, star_cost)
     end
     return global_cost, global_sol, time() - t
 end
+
+objval_3, objsol_3, objtime_3 = three_hubs(n, V_certain, ring_cost, star_cost, opening_cost)
+objval_4, objsol_4, objtime_4 = four_hubs(n, V_tilt, V_certain, ring_cost, star_cost, opening_cost)
+objval_5, objsol_5, objtime_5 = five_hubs(n, V_tilt, ring_cost, opening_cost, star_cost)
+
+global_obj = objval_5
+if objval_3 < global_obj
+    global_obj = objval_3
+end
+
+if  objval_4 < global_obj
+    global_obj = objval_4
+end
+
+
+result_dict = Dict()
+result_dict["algorithm"] = "brute_force"
+for param_name in ["num_constraint_ilp_including_integrality", 
+                    "num_constraint_ilp_notinclude_integrality", 
+                    "lower_bound", 
+                    "upper_bound", 
+                    "num_subtour", 
+                    "num_hubs",
+                    "time_sp",
+                    "time_master",
+                    "total_time",
+                    "num_cut_sp0",
+                    "num_cut_spi",
+                    "obj_bf3",
+                    "obj_bf4",
+                    "obj_bf5",
+                    "time_bf3",
+                    "time_bf4",
+                    "time_bf5",
+                    "timestamp"]
+    result_dict[param_name] = 0
+end
+
+result_dict["obj_bf3"] = objval_3
+result_dict["obj_bf4"] = objval_4
+result_dict["obj_bf5"] = objval_5
+
+result_dict["time_bf3"] = objtime_3
+result_dict["time_bf4"] = objtime_4
+result_dict["time_bf5"] = objtime_5
+
+result_dict["timestamp"] = now()
+result_dict["total_time"] = objtime_3 + objtime_4 + objtime_5
+result_dict["lower_bound"] = global_obj
+result_dict["upper_bound"] = global_obj
+
+result_dict["num_hubs"] = 5
+# println(result_dict) 
+write_ouput(pars, name, result_dict, MainPar)
+
+
+# _write_log_bruteforce(name, n, V_tilt, "brute_force", objval_3, objsol_3, objtime_3, objval_4, objsol_4, objtime_4, objval_5, objsol_5, objtime_5)
