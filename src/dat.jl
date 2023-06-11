@@ -1,7 +1,7 @@
 using LinearAlgebra
 using DelimitedFiles
 
-function read_input_random(filepath, alpha)
+function read_input_random(filepath, pars0)
     
     f = open(filepath, "r")
     _n,_,_ = [parse(Float64, i) for i in split(readline(f)," ")]
@@ -21,12 +21,12 @@ function read_input_random(filepath, alpha)
             dist[j,i] = dist[i,j]
         end
     end
-    # star_cost = ceil.(Int, dist * alpha)
-    # ring_cost = ceil.(Int, (10-alpha)*dist)
-    star_cost = dist
-    ring_cost = dist * 2
+    star_cost = ceil.(Int, dist * pars.alpha)
+    ring_cost = ceil.(Int, (10- pars.alpha) * dist)
+    # star_cost = dist
+    # ring_cost = dist * 2
     readline(f)
-    opening_cost= [parse(Float64, i) for i in split(readline(f)," ")]
+    opening_cost = [parse(Float64, i) for i in split(readline(f)," ")]
     close(f)
     return _n, opening_cost, star_cost, ring_cost # number of nodes, opening cost, star cost, ring cost
 end
@@ -129,23 +129,39 @@ end
 # opening_cost, ring_cost, star_cost = oc, rc, sc
 # offset, oc, rc, sc, backup = _transformation_cost(rc,sc, oc, n, V_tilt, V_certain)
 
-function read_input_journal(filepath, alpha)
+function read_input_journal(filepath, pars)
     
-    coor = readdlm(filepath)[7:end-1, 2:3]
-    n = size(coor)[1]
-    dist = ones(n,n) * 1e18
-    
-    for i in 1:n
-        for j in 1:n
-            i<j || continue
-            dist[i,j] = round(norm([coor[i,1] - coor[j,1], coor[i,2] - coor[j,2]], 2))
-            dist[j,i] = dist[i,j]
+    if readdlm(filepath)[7] == "EDGE_WEIGHT_SECTION"
+        n = length(readdlm(filepath)[8, 1:end])
+        dist = readdlm(filepath)[8:7+n, 1:end]
+        
+        for i in 1:n
+            for j in i+1:n
+                dist[i,j] = dist[j,i]
+            end
+            dist[i,i] = 1e18
         end
-    end
 
-    star_cost = ceil.(Int, dist * alpha)
-    ring_cost = ceil.(Int, (10-alpha)*dist)
-    opening_cost = zeros(Int, n)
+        star_cost = ceil.(Int, dist * pars.alpha)
+        ring_cost = ceil.(Int, (10- pars.alpha)* dist)
+        opening_cost = zeros(Int, n)
+    else
+        coor = readdlm(filepath)[7:end-1, 2:3]
+        n = size(coor)[1]
+        dist = ones(n,n) * 1e18
+        
+        for i in 1:n
+            for j in 1:n
+                i<j || continue
+                dist[i,j] = round(norm([coor[i,1] - coor[j,1], coor[i,2] - coor[j,2]], 2))
+                dist[j,i] = dist[i,j]
+            end
+        end
+
+        star_cost = ceil.(Int, dist * pars.alpha)
+        ring_cost = ceil.(Int, (10- pars.alpha)* dist)
+        opening_cost = zeros(Int, n)
+    end
     return n, opening_cost, star_cost, ring_cost # number of nodes, opening cost, star cost, ring cost
 end
 
@@ -153,4 +169,7 @@ end
 # filepath = "instances/small_instances/Instances_journal_article/EUC_2D/bier127.tsp"
 
 # @show read_input_journal(filepath, 7)
-
+# filepath = "instances/small_instances/Instances_journal_article/non-EUC_2D/ulysses16.tsp"
+# include("mutable_structure.jl")
+# pars = MainPar(transformation = false, one_cut = true)
+# read_input_journal(filepath, pars)
