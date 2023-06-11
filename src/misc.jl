@@ -175,58 +175,27 @@ end
 #     end
 # end
 
-function _add_cut_SPi(master, _varphi, _gamma, indice, _lambda, _y_hat)
+function _add_cut_SPi(master, _varphi, _gamma, indice, _lambda, _y_hat, result_dict)
     if !(_lambda[indice] >= 3(1-_y_hat[indice])*_varphi[indice] - sum(_y_hat[j]*_gamma[indice,j] for j in V if j!=indice))
         cut = @constraint(master, lambda[indice] >= 3(1-y[indice])*_varphi[indice] - sum(y[j]*_gamma[indice,j] for j in V if j!=indice))
-        @info "Adding the cut $(cut)"
+        # @info "Adding the cut $(cut)"
+        result_dict["num_cut_spi"] += 1
     end
 end
 
 function _add_cut_SP0_test(master, _alpha,_beta,_lambda_01, _lambda_02, _x_hat)
     if length(keys(_beta)) > 0 && !(_lambda_01 >= sum((_x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ _x_hat[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta)))
         cut = @constraint(master, lambda_01 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta)))
-        @info "Adding the cut lambda_01 $(cut)"
+        # @info "Adding the cut lambda_01 $(cut)"
     end
 
     if length(keys(_alpha)) > 0 !(_lambda_02 >= sum((_x_hat[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + _x_hat[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+_x_hat[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
         cut = @constraint(master, lambda_02 >= sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha)))
-        @info "Adding the cut lambda_02 $(cut)"
+        # @info "Adding the cut lambda_02 $(cut)"
     end
 end
 
-# For ILP only
-function my_callback_subtour(cb_data)
-    
-    x_hat = Bool.(round.(callback_value.(cb_data, x)))
-    y_hat1 = Bool.(round.(callback_value.(cb_data, y)))
-    x_hat = _transform_matrix(x_hat)
-    
-    status = callback_node_status(cb_data, main)
-    
-    y_hat = zeros(Bool, n)
-    for i in 1:n
-        y_hat1[i,i] == 1 || continue
-        y_hat[i] = 1
-    end
-    
-    all_cycles = find_cycle(x_hat, y_hat)
 
-    if status == MOI.CALLBACK_NODE_STATUS_INTEGER
-        # Check subtour in a tour
-        if length(all_cycles) > 1
-            _list_hub = [i for i in 1:n if y_hat[i] == 1]
-            # add subtour elimination
-            for each_cycle in all_cycles
-                con = @build_constraint(length(each_cycle) - 1/(length(_list_hub)- length(each_cycle))*sum(y[i,i] for i in _list_hub if i ∉ each_cycle)>= 
-                sum(x[minmax(each_cycle[i], each_cycle[i+1])] for i in eachindex(each_cycle[1:end-1]))+ x[minmax(each_cycle[1], each_cycle[end])])
-                MOI.submit(main, MOI.LazyConstraint(cb_data), con)
-                open("subtour.txt", "w") do io
-                    println(io, "Subtour: $(con)")
-                end
-            end
-        end
-    end
-end
 
 # function _add_knapsack_inequalities(master, _alpha, _beta, _gamma, _varphi, x_hat, y_hat, global_upper_bound)
 #     con = @constraint(master, sum(ring_cost[i,j]*x[i,j] for (i,j) in E)+ sum(opening_cost[i]*y[i] for i in V) + sum(lambda[i] for i in V) + sum((x[minmax(k,i)]+x[minmax(i,j)]+x[minmax(j,t)] - 2)*_alpha[i,j,k,t]
@@ -264,17 +233,19 @@ end
 
 
 # Add cut SP0 (no splitting)
-function _add_cut_SP0(master, _alpha,_beta,_lambda, sp0)
+function _add_cut_SP0(master, _alpha,_beta,_lambda, sp0, result_dict)
     if !(_lambda >= sp0)
         cut = @constraint(master, lambda_0 >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta) if length(keys(_alpha))>0) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha) if length(keys(_alpha))>0))
-        @info "Adding the cut lambda_0 $(cut)"
+        # @info "Adding the cut lambda_0 $(cut)"
+        result_dict["num_cut_sp0"] += 1
     end
 end
 
-function _add_one_cut(master, sp0, sp1, _alpha, _beta, _lambda_one_hat, n, _varphi, _gamma)
+function _add_one_cut(master, sp0, sp1, _alpha, _beta, _lambda_one_hat, n, _varphi, _gamma, result_dict)
     if !(_lambda_one_hat >= sp0 + sp1)
-        con = @constraint(master, lambda_one >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta) if length(keys(_alpha))>0) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha) if length(keys(_alpha))>0)
+        con = @constraint(master, lambda_one >= sum((x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+ x[minmax(val[2],val[3])[1],minmax(val[2],val[3])[2]] - 1)* _beta[(val[1],val[2],val[3])] for val in keys(_beta) if length(keys(_beta))>0) + sum((x[minmax(val[3],val[1])[1],minmax(val[3],val[1])[2]] + x[minmax(val[1],val[2])[1],minmax(val[1],val[2])[2]]+x[minmax(val[2],val[4])[1],minmax(val[2],val[4])[2]] - 2) * _alpha[(val[1],val[2],val[3],val[4])] for val in keys(_alpha) if length(keys(_alpha))>0)
                                                 + sum(3(1-y[indice])*_varphi[indice] for indice in 1:n) - sum(y[j]*_gamma[indice,j] for indice in 1:n for j in 1:n if j!=indice))
-        @info "Adding only one cut $(con)"
+        # @info "Adding only one cut $(con)"
+        result_dict["num_cut_sp0"] += 1
     end
 end
