@@ -97,17 +97,24 @@ set_attribute(main, MOI.LazyConstraintCallback(), my_callback_subtour)
 if pars.uc
     set_attribute(main, MOI.UserCutCallback(), call_back_user_cuts)
 end
-
+set_optimizer_attribute(main, "Cutoff", bf_global_obj)
 optimize!(main)
 
-result_dict["num_constraint_ilp_including_integrality"] = num_constraints(main; count_variable_in_set_constraints = true)
-result_dict["num_constraint_ilp_notinclude_integrality"] = num_constraints(main; count_variable_in_set_constraints = false)
-result_dict["lower_bound"] = objective_bound(main)
-result_dict["upper_bound"] = objective_value(main)
-result_dict["num_hubs"] = sum(value(y[i,i]) for i in 1:n)
-result_dict["total_time"] = solve_time(main)
-result_dict["timestamp"] = now()
-
+if has_values(main)
+    result_dict["num_constraint_ilp_including_integrality"] = num_constraints(main; count_variable_in_set_constraints = true)
+    result_dict["num_constraint_ilp_notinclude_integrality"] = num_constraints(main; count_variable_in_set_constraints = false)
+    result_dict["lower_bound"] = objective_bound(main)
+    result_dict["upper_bound"] = objective_value(main)
+    result_dict["num_hubs"] = sum(value(y[i,i]) for i in 1:n)
+    result_dict["total_time"] = solve_time(main)
+    result_dict["timestamp"] = now()
+else
+    result_dict["lower_bound"] = objective_bound(main)
+    result_dict["upper_bound"] = bf_global_obj
+    result_dict["num_hubs"] = bf_global_num_hubs
+    result_dict["total_time"] = solve_time(main)
+    result_dict["timestamp"] = now()
+end
 @show name
 write_ouput(pars, name, result_dict, MainPar)
 
