@@ -1,9 +1,9 @@
 function three_hubs(n, V_certain, ring_cost, star_cost, opening_cost)
     t = time()
-    global_obj = 1e18
+    bf_global_obj = 1e18
     global_sol = []
     if length(V_certain) < 3
-        return global_obj, global_sol, time() - t
+        return bf_global_obj, global_sol, time() - t
     else
         obj = opening_cost[1]
         for i1 in V_certain[V_certain .!= 1] 
@@ -14,22 +14,22 @@ function three_hubs(n, V_certain, ring_cost, star_cost, opening_cost)
                     v ∉ [i1, i2] || continue
                     obj += min(star_cost[v,1], star_cost[v,i1], star_cost[v, i2])
                 end
-                if obj < global_obj
-                    global_obj = obj
+                if obj < bf_global_obj
+                    bf_global_obj = obj
                     global_sol = [1, i1, i2]
                 end
             end
         end 
     end
-    return global_obj, global_sol, time() - t
+    return bf_global_obj, global_sol, time() - t
 end
 
 function four_hubs(n, V_tilt, V_certain, ring_cost, star_cost, opening_cost)
     t = time()
-    global_obj = 1e18
+    bf_global_obj = 1e18
     global_sol = []
     if length(V_certain) < 3 
-        return global_obj, global_sol, time() - t
+        return bf_global_obj, global_sol, time() - t
     else
         for i1 in V_certain[V_certain .!= 1] 
             for i2 in V_certain
@@ -64,8 +64,8 @@ function four_hubs(n, V_tilt, V_certain, ring_cost, star_cost, opening_cost)
                         end
                     end
                     obj += m
-                    if obj < global_obj
-                        global_obj = obj
+                    if obj < bf_global_obj
+                        bf_global_obj = obj
                         global_sol = lopening_costal_solution
                     end
                 end
@@ -73,7 +73,7 @@ function four_hubs(n, V_tilt, V_certain, ring_cost, star_cost, opening_cost)
         end
 
     end
-    return global_obj, global_sol, time() - t
+    return bf_global_obj, global_sol, time() - t
 end
 
 function cal_star_cost_3uncertains(star_cost, v, H_tilt)
@@ -227,13 +227,16 @@ objval_3, objsol_3, objtime_3 = three_hubs(n, V_certain, ring_cost, star_cost, o
 objval_4, objsol_4, objtime_4 = four_hubs(n, V_tilt, V_certain, ring_cost, star_cost, opening_cost)
 objval_5, objsol_5, objtime_5 = five_hubs(n, V_tilt, ring_cost, opening_cost, star_cost)
 
-global_obj = objval_5
-if objval_3 < global_obj
-    global_obj = objval_3
+global bf_global_obj = objval_5
+global bf_global_num_hubs = 5
+if objval_3 < bf_global_obj
+    bf_global_obj = objval_3
+    bf_global_num_hubs = 3
 end
 
-if  objval_4 < global_obj
-    global_obj = objval_4
+if  objval_4 < bf_global_obj
+    bf_global_obj = objval_4
+    bf_global_num_hubs = 4
 end
 
 
@@ -270,10 +273,10 @@ result_dict["time_bf5"] = objtime_5
 
 result_dict["timestamp"] = now()
 result_dict["total_time"] = objtime_3 + objtime_4 + objtime_5
-result_dict["lower_bound"] = global_obj
-result_dict["upper_bound"] = global_obj
+result_dict["lower_bound"] = bf_global_obj
+result_dict["upper_bound"] = bf_global_obj
 
-result_dict["num_hubs"] = 5
+result_dict["num_hubs"] = bf_global_num_hubs
 # println(result_dict) 
 write_ouput(pars, name, result_dict, MainPar)
 
