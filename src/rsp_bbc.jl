@@ -155,7 +155,6 @@ function main_rsp_bbc()
                     end
                 end
                 result_dict["time_sp"] = time() - time_sp
-                result_dict["num_hubs"] = floor(Int, sum(y_hat[i] for i in 1:n))
             end
         end
     end
@@ -164,15 +163,23 @@ function main_rsp_bbc()
     # MAIN PROGRAM
     # # # # # # # # # # # # 
     set_attribute(master_bbc, MOI.LazyConstraintCallback(), my_callback_benders_cut)
+    set_optimizer_attribute(master_bbc, "Cutoff", bf_global_obj)
     optimize!(master_bbc)
-
-    result_dict["num_constraint_ilp_including_integrality"] = num_constraints(master_bbc; count_variable_in_set_constraints = true)
-    result_dict["num_constraint_ilp_notinclude_integrality"] = num_constraints(master_bbc; count_variable_in_set_constraints = false)
-    result_dict["lower_bound"] = objective_bound(master_bbc)
-    result_dict["upper_bound"] = objective_value(master_bbc)
-    result_dict["total_time"] = solve_time(master_bbc)
-    result_dict["timestamp"] = now()
-
+    if has_values(master_bbc)
+        result_dict["num_constraint_ilp_including_integrality"] = num_constraints(master_bbc; count_variable_in_set_constraints = true)
+        result_dict["num_constraint_ilp_notinclude_integrality"] = num_constraints(master_bbc; count_variable_in_set_constraints = false)
+        result_dict["lower_bound"] = objective_bound(master_bbc)
+        result_dict["upper_bound"] = objective_value(master_bbc)
+        result_dict["num_hubs"] = sum(value(y[i,i]) for i in 1:n)
+        result_dict["total_time"] = solve_time(master_bbc)
+        result_dict["timestamp"] = now()
+    else
+        result_dict["lower_bound"] = objective_bound(master_bbc)
+        result_dict["upper_bound"] = bf_global_obj
+        result_dict["num_hubs"] = bf_global_num_hubs
+        result_dict["total_time"] = solve_time(master_bbc)
+        result_dict["timestamp"] = now()
+    end
     write_ouput(pars, name, result_dict, MainPar)
 end
 
