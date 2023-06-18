@@ -4,28 +4,7 @@ import MathOptInterface as MOI
 include("dual_solution.jl")
 include("misc.jl")
 
-result_dict = Dict()
-result_dict["algorithm"] = "bbc"
-for param_name in ["num_constraint_ilp_including_integrality", 
-                    "num_constraint_ilp_notinclude_integrality", 
-                    "lower_bound", 
-                    "upper_bound", 
-                    "num_subtour", 
-                    "num_hubs",
-                    "time_sp",
-                    "time_master",
-                    "total_time",
-                    "num_cut_sp0",
-                    "num_cut_spi",
-                    "obj_bf3",
-                    "obj_bf4",
-                    "obj_bf5",
-                    "time_bf3",
-                    "time_bf4",
-                    "time_bf5",
-                    "timestamp"]
-    result_dict[param_name] = 0
-end
+result_dict = initializeResult_dict("bbc")
 
 
 lb_distance = _find_lower_bound_backup(n, V_tilt, rc)
@@ -180,6 +159,10 @@ function main_rsp_bbc()
         result_dict["total_time"] = solve_time(master_bbc)
         result_dict["timestamp"] = now()
     end
+    result_dict["node_count"] = MOI.get(master_bbc, MOI.NodeCount())
+    @info "Node count = $(result_dict["node_count"])"
+    result_dict["gap"] = (result_dict["upper_bound"] - result_dict["lower_bound"])/result_dict["upper_bound"]
+    @info "Completed ILP ...Gap = $(result_dict["gap"]), Lower_bound = $(result_dict["lower_bound"])"
     write_ouput(pars, name, result_dict, MainPar)
 end
 

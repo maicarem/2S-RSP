@@ -249,3 +249,31 @@ function _add_one_cut(master, sp0, sp1, _alpha, _beta, _lambda_one_hat, n, _varp
         result_dict["num_cut_sp0"] += 1
     end
 end
+
+function initializeResult_dict(name)
+    result_dict = Dict()
+    result_dict["algorithm"] = name
+    for param_name in ["num_constraint_ilp_including_integrality", 
+                        "num_constraint_ilp_notinclude_integrality", 
+                        "lower_bound", 
+                        "upper_bound", 
+                        "num_subtour", 
+                        "num_hubs",
+                        "time_sp",
+                        "time_master",
+                        "total_time",
+                        "num_cut_sp0",
+                        "num_cut_spi",
+                        "obj_bf3",
+                        "obj_bf4",
+                        "obj_bf5",
+                        "time_bf3",
+                        "time_bf4",
+                        "time_bf5",
+                        "timestamp",
+                        "gap",
+                        "node_count"] # get the number of node 
+        result_dict[param_name] = 0
+    end
+    return result_dict
+end

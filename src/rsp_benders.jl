@@ -1,28 +1,7 @@
 include("misc.jl")
 include("dual_solution.jl")
 
-result_dict = Dict()
-result_dict["algorithm"] = "benders"
-for param_name in ["num_constraint_ilp_including_integrality", 
-                    "num_constraint_ilp_notinclude_integrality", 
-                    "lower_bound", 
-                    "upper_bound", 
-                    "num_subtour", 
-                    "num_hubs",
-                    "time_sp",
-                    "time_master",
-                    "total_time",
-                    "num_cut_sp0",
-                    "num_cut_spi",
-                    "obj_bf3",
-                    "obj_bf4",
-                    "obj_bf5",
-                    "time_bf3",
-                    "time_bf4",
-                    "time_bf5",
-                    "timestamp"]
-    result_dict[param_name] = 0
-end
+result_dict = initializeResult_dict("benders")
 
 lb_distance = _find_lower_bound_backup(n, V_tilt, rc)
 ############# master_bender PROBLEM ########################################
@@ -162,6 +141,8 @@ function rsp_benders(pars, n, oc, sc, rc, backup, lb_distance, opening_cost, rin
         result_dict["timestamp"] = now()
         result_dict["lower_bound"] = lower_bound
         result_dict["upper_bound"] = global_upper_bound
+
+        result_dict["gap"] = (result_dict["upper_bound"] - result_dict["lower_bound"])/result_dict["upper_bound"]
         write_ouput(pars, name, result_dict, MainPar)
         # _write_log_benders(name, n, V_tilt, "benders", lower_bound, global_upper_bound, time() - starting_time, pars)
     end
