@@ -8,8 +8,12 @@ function map_output()
     for file in files
         file_path = joinpath(directory, file)
         content = read(file_path, String)
-        combined_text *= content
-        combined_text *= "\n"
+        println(content)
+        if occursin("time_limit: 3600",content)
+            combined_text *= content
+            combined_text *= "\n"
+        end
+        
     end
 
     output_file = "combined_output.txt"
@@ -43,23 +47,42 @@ function map_output()
         end
     end
     @show value_dict
-
-    for each_line in lines
+    total = 0
+    # Extract the values from the remaining lines
+    for each_line in lines[1:end-1]
         line0 = split(each_line, ",")
         keys0 = hcat(map(strip, line0))
+        list_keys0 = [split(each_key0, ":")[1] for each_key0 in keys0]
+        if "node_count" ∉ list_keys0
+            push!(value_dict["node_count"], 0)
+            # total += 1 
+        end
+        # result_dict["gap"] = (result_dict["upper_bound"] - result_dict["lower_bound"])/result_dict["upper_bound"]
+
+        ub, lb = 0, 0
+
         for each_key0 in keys0
-            # @show each_key0
             if !(each_key0 == "")
+                
                 key0 = split(each_key0, ":")[1]
                 val0 = split(each_key0, ":")[2]
-                # @show typeof(val0)
 
                 if key0 ∈ ["name","algorithm", "split_sp0", "benders","transformation", "one_cut", "uc", "timestamp"]
                     push!(value_dict[key0], val0)
                 else
                     push!(value_dict[key0], parse(Float64, val0))
                 end
+
+                if key0 == "upper_bound"
+                    ub = value_dict["upper_bound"][end]
+                elseif key0 == "lower_bound"
+                    lb = value_dict["lower_bound"][end]
+                end
             end
+        end
+        
+        if "gap" ∉ list_keys0
+            push!(value_dict["gap"], (ub - lb)/ub)
         end
     end
     df = DataFrame(value_dict)

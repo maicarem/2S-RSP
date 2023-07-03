@@ -119,7 +119,7 @@ function five_hubs(n, V_tilt, ring_cost, opening_cost, star_cost)
     global_cost = 1e18
     global_sol = []
 
-    for i2 in 1:n-3
+    for i2 in 2:n-3
         for i3 in i2+1:n-2
             for i4 in i3+1:n-1
                 for i5 in i4+1:n
